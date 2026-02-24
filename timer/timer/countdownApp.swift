@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 应用入口
 @main
-struct timerApp: App {
+struct countdownApp: App {
     /// 应用代理
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 

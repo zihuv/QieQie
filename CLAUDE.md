@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **macOS menu bar application** (menubar app) built with SwiftUI. It's a countdown timer utility that runs entirely in the system menu bar without appearing in the Dock. The app uses only native Apple frameworks—no external dependencies.
+This is a **macOS menu bar application** (menubar app) built with SwiftUI. It's a countdown utility that runs entirely in the system menu bar without appearing in the Dock. The app uses only native Apple frameworks—no external dependencies.
 
 ## Build and Run Commands
 
@@ -21,20 +21,20 @@ This is a **macOS menu bar application** (menubar app) built with SwiftUI. It's 
 
 # 运行应用
 ./build/run.sh
-# 或双击 build/timer.app
+# 或双击 build/countdown.app
 ```
 
-构建产物位于 `build/timer.app`，可以直接双击运行或分发。
+构建产物位于 `build/countdown.app`，可以直接双击运行或分发。
 
 ### Building the Project (手动编译)
 
 ```bash
 # 方法1: 使用 xcodebuild 直接编译
-xcodebuild -project timer/timer.xcodeproj -scheme timer -configuration Debug build
+xcodebuild -project timer/timer.xcodeproj -scheme countdown -configuration Debug build
 
 # 方法2: 进入 timer 目录编译
 cd timer
-xcodebuild -project timer.xcodeproj -scheme timer -configuration Release build
+xcodebuild -project timer.xcodeproj -scheme countdown -configuration Release build
 ```
 
 ### Running the Application
@@ -44,10 +44,10 @@ xcodebuild -project timer.xcodeproj -scheme timer -configuration Release build
 ./build/run.sh
 
 # 方法2: 直接打开 .app 文件
-open build/timer.app
+open build/countdown.app
 
 # 方法3: 从 Xcode DerivedData 打开
-open ~/Library/Developer/Xcode/DerivedData/timer-*/Build/Products/Debug/timer.app
+open ~/Library/Developer/Xcode/DerivedData/countdown-*/Build/Products/Debug/countdown.app
 
 # 方法4: 在 Xcode 中运行
 open timer/timer.xcodeproj  # 然后按 ⌘R
@@ -71,7 +71,7 @@ The `create_project.sh` script programmatically generates the `timer.xcodeproj/p
 The app follows a clean SwiftUI architecture with clear separation of concerns:
 
 ```
-timerApp (Entry Point)
+countdownApp (Entry Point)
     └── AppDelegate (Lifecycle Management)
             ├── CountdownManager (Core Logic)
             └── StatusBarManager (UI Layer)
@@ -80,7 +80,7 @@ timerApp (Entry Point)
 
 ### Key Components
 
-**1. timerApp.swift** (`timer/timer/timerApp.swift`)
+**1. countdownApp.swift** (`timer/timer/countdownApp.swift`)
 - SwiftUI App entry point with `@main` attribute
 - Uses `@NSApplicationDelegateAdaptor` to inject AppDelegate
 - Contains empty Settings scene to prevent automatic window creation
@@ -175,7 +175,7 @@ Both are required—neither alone is sufficient.
 - **No external dependencies**: Uses only AppKit, SwiftUI, Combine, and Foundation
 - **Minimum macOS version**: 12.0 (defined in project.pbxproj)
 - **Swift version**: 5.0
-- **App Sandbox**: Enabled (see `timer/timer/timer.entitlements`)
+- **App Sandbox**: Enabled (see `timer/timer/countdown.entitlements`)
 - **No testing infrastructure**: No unit tests or test targets configured
 - **Comments are in Chinese**: Original developer documented code in Chinese
 
@@ -186,7 +186,7 @@ When modifying the app:
 1. **Logic changes**: Modify `CountdownManager.swift` or `CountdownState.swift`
 2. **UI changes**: Modify `StatusBarManager.swift` (menubar) or `SettingsPopover.swift` (settings)
 3. **Adding new source files**: Must update `create_project.sh` and regenerate `project.pbxproj`
-4. **Configuration changes**: Edit Info.plist or timer.entitlements directly
+4. **Configuration changes**: Edit Info.plist or countdown.entitlements directly
 5. **Always test menubar behavior**: Since there's no Dock icon, use the menubar icon to access the app
 
 ## Common Tasks

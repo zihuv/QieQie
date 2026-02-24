@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Timer 应用构建脚本
+# Countdown 应用构建脚本
 # 用途：编译并生成可用的 .app 文件
 
 set -e
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  Timer 应用构建脚本${NC}"
+echo -e "${GREEN}  Countdown 应用构建脚本${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
@@ -35,12 +35,12 @@ rm -rf build
 # 编译项目
 echo -e "${YELLOW}[2/4] 编译项目 ($BUILD_CONFIG)...${NC}"
 xcodebuild -project timer/timer.xcodeproj \
-    -scheme timer \
+    -scheme countdown \
     -configuration "$BUILD_CONFIG" \
     build
 
 # 获取构建产物路径
-BUILD_PRODUCTS_DIR="$HOME/Library/Developer/Xcode/DerivedData/timer-gurbbbfurgecyqfwjyhkrzgzcogx/Build/Products/$BUILD_CONFIG/timer.app"
+BUILD_PRODUCTS_DIR="$HOME/Library/Developer/Xcode/DerivedData/timer-gurbbbfurgecyqfwjyhkrzgzcogx/Build/Products/$BUILD_CONFIG/countdown.app"
 
 # 检查编译产物是否存在
 if [ ! -d "$BUILD_PRODUCTS_DIR" ]; then
@@ -57,23 +57,23 @@ cp -R "$BUILD_PRODUCTS_DIR" build/
 echo -e "${YELLOW}[4/4] 生成快捷启动脚本...${NC}"
 cat > build/run.sh << 'EOF'
 #!/bin/bash
-# Timer 应用启动脚本
+# Countdown 应用启动脚本
 
-APP_PATH="$(dirname "$0")/timer.app"
+APP_PATH="$(dirname "$0")/countdown.app"
 
 if [ ! -d "$APP_PATH" ]; then
-    echo "错误：找不到 timer.app"
+    echo "错误：找不到 countdown.app"
     exit 1
 fi
 
-echo "正在启动 Timer 应用..."
+echo "正在启动 Countdown 应用..."
 open "$APP_PATH"
 EOF
 
 chmod +x build/run.sh
 
 # 获取文件大小
-APP_SIZE=$(du -sh build/timer.app | cut -f1)
+APP_SIZE=$(du -sh build/countdown.app | cut -f1)
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -82,13 +82,13 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "${GREEN}产物信息：${NC}"
 echo "  配置: $BUILD_CONFIG"
-echo "  路径: $(pwd)/build/timer.app"
+echo "  路径: $(pwd)/build/countdown.app"
 echo "  大小: $APP_SIZE"
 echo ""
 echo -e "${GREEN}使用方法：${NC}"
-echo "  方法1: 双击 build/timer.app"
+echo "  方法1: 双击 build/countdown.app"
 echo "  方法2: 运行 ./build/run.sh"
-echo "  方法3: 命令行 open build/timer.app"
+echo "  方法3: 命令行 open build/countdown.app"
 echo ""
 echo -e "${YELLOW}提示：${NC}"
 echo "  - Debug 配置包含调试信息，体积较大"

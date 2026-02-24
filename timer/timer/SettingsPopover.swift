@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 主界面视图
+/// 设置弹窗视图
 struct SettingsPopover: View {
     /// 倒计时管理器
     @ObservedObject var countdownManager: CountdownManager

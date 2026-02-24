@@ -1,4 +1,4 @@
-# Timer - macOS Menu Bar Countdown Timer
+# Countdown - macOS Menu Bar Countdown Timer
 
 一个简洁的 macOS 菜单栏倒计时应用，完全使用原生框架构建（无外部依赖）。
 
@@ -38,9 +38,9 @@ cd timer
 ./build/run.sh
 
 # 方法2：直接打开 .app 文件
-open build/timer.app
+open build/countdown.app
 
-# 方法3：双击 build/timer.app 文件（在 Finder 中）
+# 方法3：双击 build/countdown.app 文件（在 Finder 中）
 ```
 
 ## 使用说明
@@ -66,14 +66,14 @@ open build/timer.app
 timer/
 ├── timer/
 │   └── timer/
-│       ├── timerApp.swift          # 应用入口
+│       ├── countdownApp.swift          # 应用入口
 │       ├── AppDelegate.swift        # 应用生命周期管理
 │       ├── CountdownManager.swift   # 倒计时核心逻辑
 │       ├── CountdownState.swift     # 状态模型
 │       ├── StatusBarManager.swift   # 菜单栏 UI 管理
 │       ├── SettingsPopover.swift    # 设置界面
 │       ├── Info.plist               # 应用配置
-│       └── timer.entitlements       # 权限配置
+│       └── countdown.entitlements       # 权限配置
 ├── timer.xcodeproj/                 # Xcode 项目文件
 ├── create_project.sh                # 项目生成脚本
 └── build.sh                         # 构建脚本

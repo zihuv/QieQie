@@ -2,8 +2,8 @@
 
 # 创建 Xcode 项目的脚本
 
-PROJECT_NAME="timer"
-BUNDLE_ID="com.zhangzefu.timer"
+PROJECT_NAME="countdown"
+BUNDLE_ID="com.zhangzefu.countdown"
 MIN_VERSION="12.0"
 
 # 创建项目目录结构
@@ -20,7 +20,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E1001 /* timerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1000; };
+		E1001 /* countdownApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1000; };
 		E1003 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1002; };
 		E1005 /* CountdownState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1004; };
 		E1007 /* CountdownManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1006; };
@@ -30,7 +30,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		E1000 /* timerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = timerApp.swift; sourceTree = "<group>"; };
+		E1000 /* countdownApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = countdownApp.swift; sourceTree = "<group>"; };
 		E1002 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E1004 /* CountdownState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownState.swift; sourceTree = "<group>"; };
 		E1006 /* CountdownManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownManager.swift; sourceTree = "<group>"; };
@@ -38,7 +38,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 		E1010 /* SettingsPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopover.swift; sourceTree = "<group>"; };
 		E1012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		E9000 /* timer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = timer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E9000 /* countdown.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = countdown.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,7 +56,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 			isa = PBXGroup;
 			children = (
 				E5001 /* timer */,
-				E9000 /* timer.app */,
+				E9000 /* countdown.app */,
 			);
 			sourceTree = "<group>";
 		};
@@ -92,7 +92,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 			);
 			name = timer;
 			productName = timer;
-			productReference = E9000 /* timer.app */;
+			productReference = E9000 /* countdown.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -274,7 +274,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = timer/timer.entitlements;
+				CODE_SIGN_ENTITLEMENTS = timer/countdown.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -291,7 +291,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zhangzefu.timer;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhangzefu.countdown;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -303,7 +303,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = timer/timer.entitlements;
+				CODE_SIGN_ENTITLEMENTS = timer/countdown.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -320,7 +320,7 @@ cat > "${PROJECT_NAME}.xcodeproj/project.pbxproj" << 'PBXEOF'
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.zhangzefu.timer;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhangzefu.countdown;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
