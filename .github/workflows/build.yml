@@ -45,7 +45,7 @@ jobs:
         run: |
           cd timer
           xcodebuild -project timer.xcodeproj \
-            -scheme timer \
+            -scheme countdown \
             -configuration ${{ inputs.configuration }} \
             build
 
@@ -53,9 +53,9 @@ jobs:
         run: |
           mkdir -p artifacts
           if [ "${{ inputs.configuration }}" = "Release" ]; then
-            cp -R ~/Library/Developer/Xcode/DerivedData/timer-*/Build/Products/Release/timer.app artifacts/
+            cp -R ~/Library/Developer/Xcode/DerivedData/countdown-*/Build/Products/Release/countdown.app artifacts/
           else
-            cp -R ~/Library/Developer/Xcode/DerivedData/timer-*/Build/Products/Debug/timer.app artifacts/
+            cp -R ~/Library/Developer/Xcode/DerivedData/countdown-*/Build/Products/Debug/countdown.app artifacts/
           fi
 
       - name: 打包成 ZIP
