@@ -47,28 +47,25 @@ jobs:
           xcodebuild -project timer.xcodeproj \
             -scheme countdown \
             -configuration ${{ inputs.configuration }} \
+            -derivedDataPath ../build \
             build
 
       - name: 准备构建产物
         run: |
           mkdir -p artifacts
-          if [ "${{ inputs.configuration }}" = "Release" ]; then
-            cp -R ~/Library/Developer/Xcode/DerivedData/countdown-*/Build/Products/Release/countdown.app artifacts/
-          else
-            cp -R ~/Library/Developer/Xcode/DerivedData/countdown-*/Build/Products/Debug/countdown.app artifacts/
-          fi
+          cp -R build/Build/Products/${{ inputs.configuration }}/countdown.app artifacts/
 
       - name: 打包成 ZIP
         run: |
           cd artifacts
-          zip -r timer-${{ inputs.version }}-${{ inputs.configuration }}.zip timer.app
+          zip -r countdown-${{ inputs.version }}-${{ inputs.configuration }}.zip countdown.app
           cd ..
 
       - name: 上传构建产物到 Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: timer-macos-${{ inputs.configuration }}
-          path: artifacts/timer-*.zip
+          name: countdown-macos-${{ inputs.configuration }}
+          path: artifacts/countdown-*.zip
           retention-days: 30
 
       - name: 创建 GitHub Release 并上传
@@ -76,9 +73,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ inputs.version }}
-          name: Timer v${{ inputs.version }}
+          name: Countdown v${{ inputs.version }}
           body: ${{ inputs.release_notes }}
-          files: artifacts/timer-*.zip
+          files: artifacts/countdown-*.zip
           draft: false
           prerelease: ${{ inputs.configuration == 'Debug' }}
         env:
