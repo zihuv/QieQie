@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import SwiftData
 
 /// 应用代理
 /// 负责应用生命周期管理和初始化核心组件
@@ -10,11 +11,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 菜单栏管理器
     private var statusBarManager: StatusBarManager?
 
+    /// SwiftData 模型容器
+    var modelContainer: ModelContainer?
+
     // MARK: - NSApplicationDelegate
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 初始化 SwiftData 模型容器
+        do {
+            modelContainer = try ModelContainer(for: FocusSession.self)
+        } catch {
+            print("Failed to create ModelContainer: \(error)")
+        }
+
         // 初始化倒计时管理器
         countdownManager = CountdownManager()
+
+        // 初始化历史记录管理器
+        countdownManager?.initialize(modelContainer: modelContainer)
 
         // 初始化菜单栏管理器
         if let countdownManager = countdownManager {

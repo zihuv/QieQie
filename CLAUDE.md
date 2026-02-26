@@ -172,9 +172,9 @@ Both are required—neither alone is sufficient.
 
 ## Important Implementation Details
 
-- **No external dependencies**: Uses only AppKit, SwiftUI, Combine, and Foundation
-- **Minimum macOS version**: 12.0 (defined in project.pbxproj)
-- **Swift version**: 5.0
+- **No external dependencies**: Uses only AppKit, SwiftUI, SwiftData, Combine, and Foundation
+- **Minimum macOS version**: 14.0 (required for SwiftData)
+- **Swift version**: 5.9+
 - **App Sandbox**: Enabled (see `timer/timer/countdown.entitlements`)
 - **No testing infrastructure**: No unit tests or test targets configured
 - **Comments are in Chinese**: Original developer documented code in Chinese

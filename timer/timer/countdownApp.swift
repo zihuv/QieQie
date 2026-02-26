@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// 应用入口
 @main

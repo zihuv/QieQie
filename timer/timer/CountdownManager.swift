@@ -1,11 +1,13 @@
 import Combine
 import Foundation
+import SwiftData
 
 /// 倒计时管理器
 /// 核心职责：
 /// 1. 维护倒计时状态（使用 endTime: Date 模型）
 /// 2. 每秒触发状态更新
 /// 3. 提供启动/重置倒计时的方法
+@MainActor
 class CountdownManager: ObservableObject {
     /// 发布的倒计时状态
     @Published var state = CountdownState()
@@ -13,17 +15,45 @@ class CountdownManager: ObservableObject {
     /// 计时器
     private var timer: Timer?
 
+    /// 模型容器（从 AppDelegate 传入）
+    var modelContainer: ModelContainer?
+
+    /// 专注历史记录管理器
+    var focusHistoryManager: FocusHistoryManager?
+
+    /// 当前进行中的会话
+    private(set) var currentSession: FocusSession?
+
+    /// 会话开始时间
+    private var sessionStartTime: Date?
+
     // MARK: - 公开方法
 
+    /// 初始化管理器
+    func initialize(modelContainer: ModelContainer?) {
+        self.modelContainer = modelContainer
+        if let container = modelContainer {
+            self.focusHistoryManager = FocusHistoryManager(modelContainer: container)
+        }
+    }
+
     /// 开始倒计时
-    /// - Parameter duration: 倒计时时长（秒）
-    func startCountdown(duration: TimeInterval) {
+    /// - Parameters:
+    ///   - duration: 倒计时时长（秒）
+    ///   - taskName: 任务名称
+    func startCountdown(duration: TimeInterval, taskName: String = "") {
+        // 创建新的会话
+        let effectiveTaskName = taskName.isEmpty ? "专注时间" : taskName
+        sessionStartTime = Date()
+        currentSession = focusHistoryManager?.createSession(taskName: effectiveTaskName)
+
         // 设置结束时间并重新赋值整个 state 对象以触发 @Published
         state = CountdownState(
             endTime: Date().addingTimeInterval(duration),
             lastDuration: duration,
             isPaused: false,
-            pausedAt: nil
+            pausedAt: nil,
+            taskName: effectiveTaskName
         )
 
         // 启动定时器
@@ -33,7 +63,15 @@ class CountdownManager: ObservableObject {
     /// 重置倒计时
     /// 将倒计时重置到空闲状态
     func resetCountdown() {
+        // 保存未完成的会话
+        if let session = currentSession, let startTime = sessionStartTime {
+            let actualDuration = Date().timeIntervalSince(startTime)
+            focusHistoryManager?.finishSession(session, duration: actualDuration, isCompleted: false)
+        }
+
         // 回到 idle 状态，清除所有计时信息
+        currentSession = nil
+        sessionStartTime = nil
         state = CountdownState()
         stopTimer()
     }
@@ -57,7 +95,8 @@ class CountdownManager: ObservableObject {
             endTime: newEndTime,
             lastDuration: state.lastDuration,
             isPaused: true,
-            pausedAt: Date()
+            pausedAt: Date(),
+            taskName: state.taskName
         )
     }
 
@@ -77,7 +116,8 @@ class CountdownManager: ObservableObject {
             endTime: newEndTime,
             lastDuration: state.lastDuration,
             isPaused: false,
-            pausedAt: nil
+            pausedAt: nil,
+            taskName: state.taskName
         )
         startTimer()
     }
@@ -118,6 +158,13 @@ class CountdownManager: ObservableObject {
 
         // 检查是否完成
         if let remaining = state.remainingTime, remaining <= 0 {
+            // 保存完成的会话
+            if let session = currentSession, let startTime = sessionStartTime {
+                let actualDuration = Date().timeIntervalSince(startTime)
+                focusHistoryManager?.finishSession(session, duration: actualDuration, isCompleted: true)
+            }
+            currentSession = nil
+            sessionStartTime = nil
             stopTimer()
         }
 
@@ -127,7 +174,8 @@ class CountdownManager: ObservableObject {
             endTime: state.endTime,
             lastDuration: state.lastDuration,
             isPaused: state.isPaused,
-            pausedAt: state.pausedAt
+            pausedAt: state.pausedAt,
+            taskName: state.taskName
         )
     }
 }

@@ -8,6 +8,7 @@ import SwiftUI
 /// 2. 更新菜单栏标题
 /// 3. 处理菜单点击事件
 /// 4. 显示设置 Popover
+@MainActor
 class StatusBarManager {
     /// 状态栏项
     private var statusItem: NSStatusItem?
@@ -110,16 +111,20 @@ class StatusBarManager {
 
             switch self.countdownManager.state.status {
             case .idle:
-                button.title = "⏱"
+                button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle")
+                button.title = ""
             case .running:
+                button.image = nil
                 if let remaining = self.countdownManager.state.remainingTime {
                     button.title = self.formatTime(remaining)
                 }
             case .paused:
+                button.image = nil
                 if let remaining = self.countdownManager.state.remainingTime {
                     button.title = self.formatTime(remaining)
                 }
             case .finished:
+                button.image = nil
                 button.title = "Done"
             }
         }

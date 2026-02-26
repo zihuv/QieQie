@@ -15,6 +15,7 @@ struct CountdownState {
     var lastDuration: TimeInterval?  // 上次设置的时长（用于 reset）
     var isPaused: Bool = false       // 是否暂停
     var pausedAt: Date?              // 暂停时间点
+    var taskName: String = ""        // 当前任务名称
 
     /// 当前状态
     var status: CountdownStatus {
