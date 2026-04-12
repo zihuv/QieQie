@@ -14,7 +14,6 @@
         <tr>
             <th>OS</th>
             <th>Download</th>
-            <th>Install</th>
         </tr>
     </thead>
     <tbody align=left>
