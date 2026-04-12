@@ -1,6 +1,6 @@
 ---
 name: test-and-verify
-description: Use when fixing bugs, validating behavior changes, or reviewing whether a code change actually works, including macOS menu bar apps, popovers, and Accessibility-based UI verification. This skill enforces a verification-first workflow: reproduce the issue, define the acceptance check, make the change, run the most direct available test path, and report exactly what was and was not verified.
+description: "Use when fixing bugs, validating behavior changes, or reviewing whether a code change actually works, including macOS menu bar apps, popovers, and Accessibility-based UI verification. This skill enforces a verification-first workflow: reproduce the issue, define the acceptance check, make the change, run the most direct available test path, and report exactly what was and was not verified."
 ---
 
 # Test And Verify
