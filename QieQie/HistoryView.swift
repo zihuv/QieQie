@@ -2,8 +2,8 @@ import SwiftUI
 
 /// 历史记录视图
 struct HistoryView: View {
-    /// 倒计时管理器
-    @ObservedObject var focusTimerManager: FocusTimerManager
+    /// 历史记录管理器
+    let historyManager: FocusHistoryManager
 
     /// 返回按钮绑定
     @Binding var showHistory: Bool
@@ -42,7 +42,7 @@ struct HistoryView: View {
             .controlSize(.large)
         }
         .padding(16)
-        .frame(width: 280, height: 360)
+        .frame(width: 300, height: 380)
         .onAppear {
             loadData()
         }
@@ -112,7 +112,7 @@ struct HistoryView: View {
                     ForEach(groupedSessions, id: \.date) { group in
                         VStack(alignment: .leading, spacing: 4) {
                             // 日期标题
-                            Text(formatDate(group.date))
+                            Text(FocusDisplayFormatter.date(group.date))
                                 .font(.caption)
                                 .fontWeight(.semibold)
                                 .foregroundColor(.secondary)
@@ -126,7 +126,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .frame(height: 90)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     /// 会话行
@@ -137,7 +137,7 @@ struct HistoryView: View {
                     .font(.system(size: 12))
                     .lineLimit(1)
 
-                Text(formatTime(session.startTime))
+                Text(FocusDisplayFormatter.time(session.startTime))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
@@ -181,46 +181,17 @@ struct HistoryView: View {
 
     /// 加载数据
     private func loadData() {
-        guard let manager = focusTimerManager.focusHistoryManager else { return }
-        groupedSessions = manager.getSessionsGroupedByDate()
-        totalStats = manager.getAllTimeStatistics()
+        let snapshot = historyManager.getHistorySnapshot()
+        groupedSessions = snapshot.groupedSessions
+        totalStats = snapshot.totalStatistics
     }
 
     /// 删除会话
     private func deleteSession() {
-        guard let session = sessionToDelete,
-              let context = focusTimerManager.focusHistoryManager?.modelContainer?.mainContext else { return }
+        guard let session = sessionToDelete else { return }
 
-        context.delete(session)
-
-        do {
-            try context.save()
+        if historyManager.deleteSession(session) {
             loadData()
-        } catch {
-            print("Failed to delete session: \(error)")
         }
-    }
-
-    /// 格式化日期
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
-
-    /// 格式化时间
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-}
-
-/// 预览
-struct HistoryView_Previews: PreviewProvider {
-    static var previews: some View {
-        HistoryView(focusTimerManager: FocusTimerManager(), showHistory: .constant(true))
     }
 }

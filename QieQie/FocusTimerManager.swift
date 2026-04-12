@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import SwiftData
 
 /// 倒计时管理器
 /// 核心职责：
@@ -8,18 +7,15 @@ import SwiftData
 /// 2. 每秒触发状态更新
 /// 3. 提供启动/重置倒计时的方法
 @MainActor
-class FocusTimerManager: ObservableObject {
+final class FocusTimerManager: ObservableObject {
     /// 发布的倒计时状态
     @Published var state = FocusTimerState()
 
     /// 计时器
     private var timer: Timer?
 
-    /// 模型容器（从 AppDelegate 传入）
-    var modelContainer: ModelContainer?
-
     /// 专注历史记录管理器
-    var focusHistoryManager: FocusHistoryManager?
+    let focusHistoryManager: FocusHistoryManager?
 
     /// 当前进行中的会话
     private(set) var currentSession: FocusSession?
@@ -27,29 +23,32 @@ class FocusTimerManager: ObservableObject {
     /// 会话开始时间
     private var sessionStartTime: Date?
 
-    // MARK: - 公开方法
+    /// 累计暂停时长，避免把暂停时间计入专注时长
+    private var accumulatedPausedDuration: TimeInterval = 0
 
-    /// 初始化管理器
-    func initialize(modelContainer: ModelContainer?) {
-        self.modelContainer = modelContainer
-        if let container = modelContainer {
-            self.focusHistoryManager = FocusHistoryManager(modelContainer: container)
-        }
+    init(focusHistoryManager: FocusHistoryManager? = nil) {
+        self.focusHistoryManager = focusHistoryManager
     }
+
+    // MARK: - 公开方法
 
     /// 开始倒计时
     /// - Parameters:
     ///   - duration: 倒计时时长（秒）
     ///   - taskName: 任务名称
     func startFocusTimer(duration: TimeInterval, taskName: String = "") {
+        stopTimer()
+
         // 创建新的会话
-        let effectiveTaskName = taskName.isEmpty ? "专注时间" : taskName
-        sessionStartTime = Date()
-        currentSession = focusHistoryManager?.createSession(taskName: effectiveTaskName)
+        let startTime = Date()
+        let effectiveTaskName = normalizedTaskName(taskName)
+        sessionStartTime = startTime
+        accumulatedPausedDuration = 0
+        currentSession = focusHistoryManager?.createSession(taskName: effectiveTaskName, startTime: startTime)
 
         // 设置结束时间并重新赋值整个 state 对象以触发 @Published
         state = FocusTimerState(
-            endTime: Date().addingTimeInterval(duration),
+            endTime: startTime.addingTimeInterval(duration),
             lastDuration: duration,
             isPaused: false,
             pausedAt: nil,
@@ -63,17 +62,11 @@ class FocusTimerManager: ObservableObject {
     /// 重置倒计时
     /// 将倒计时重置到空闲状态
     func resetFocusTimer() {
-        // 保存未完成的会话
-        if let session = currentSession, let startTime = sessionStartTime {
-            let actualDuration = Date().timeIntervalSince(startTime)
-            focusHistoryManager?.finishSession(session, duration: actualDuration, isCompleted: false)
-        }
+        finalizeCurrentSession(isCompleted: false, endedAt: Date())
 
         // 回到 idle 状态，清除所有计时信息
-        currentSession = nil
-        sessionStartTime = nil
-        state = FocusTimerState()
         stopTimer()
+        state = state.idlePreservingInputs()
     }
 
     /// 暂停倒计时
@@ -86,16 +79,17 @@ class FocusTimerManager: ObservableObject {
         // 计算当前精确的剩余时间（向上取整到秒）
         guard let endTime = state.endTime else { return }
         let currentRemaining = ceil(endTime.timeIntervalSinceNow)
+        let pausedAt = Date()
 
         // 创建新的结束时间点，使得暂停时的剩余时间是整数秒
-        let newEndTime = Date().addingTimeInterval(currentRemaining)
+        let newEndTime = pausedAt.addingTimeInterval(currentRemaining)
 
         // 记录当前时间点
         state = FocusTimerState(
             endTime: newEndTime,
             lastDuration: state.lastDuration,
             isPaused: true,
-            pausedAt: Date(),
+            pausedAt: pausedAt,
             taskName: state.taskName
         )
     }
@@ -107,7 +101,9 @@ class FocusTimerManager: ObservableObject {
               let pausedAt = state.pausedAt else { return }
 
         // 计算暂停了多久
-        let pauseDuration = Date().timeIntervalSince(pausedAt)
+        let now = Date()
+        let pauseDuration = now.timeIntervalSince(pausedAt)
+        accumulatedPausedDuration += pauseDuration
 
         // 新的结束时间 = 原结束时间 + 暂停时长
         let newEndTime = oldEndTime.addingTimeInterval(pauseDuration)
@@ -138,7 +134,9 @@ class FocusTimerManager: ObservableObject {
         stopTimer() // 先停止之前的定时器
 
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateState()
+            Task { @MainActor [weak self] in
+                self?.updateState()
+            }
         }
     }
 
@@ -158,24 +156,48 @@ class FocusTimerManager: ObservableObject {
 
         // 检查是否完成
         if let remaining = state.remainingTime, remaining <= 0 {
-            // 保存完成的会话
-            if let session = currentSession, let startTime = sessionStartTime {
-                let actualDuration = Date().timeIntervalSince(startTime)
-                focusHistoryManager?.finishSession(session, duration: actualDuration, isCompleted: true)
-            }
-            currentSession = nil
-            sessionStartTime = nil
+            finalizeCurrentSession(isCompleted: true, endedAt: Date())
             stopTimer()
         }
 
-        // 重新赋值 state 以触发 @Published 更新
-        // 必须保留所有字段，否则会丢失状态信息
-        state = FocusTimerState(
-            endTime: state.endTime,
-            lastDuration: state.lastDuration,
-            isPaused: state.isPaused,
-            pausedAt: state.pausedAt,
-            taskName: state.taskName
+        state = state.refreshed()
+    }
+
+    private func finalizeCurrentSession(isCompleted: Bool, endedAt: Date) {
+        guard let session = currentSession, let startTime = sessionStartTime else {
+            clearCurrentSession()
+            return
+        }
+
+        let inFlightPauseDuration: TimeInterval
+        if state.isPaused, let pausedAt = state.pausedAt {
+            inFlightPauseDuration = endedAt.timeIntervalSince(pausedAt)
+        } else {
+            inFlightPauseDuration = 0
+        }
+
+        let actualDuration = max(
+            0,
+            endedAt.timeIntervalSince(startTime) - accumulatedPausedDuration - inFlightPauseDuration
         )
+
+        focusHistoryManager?.finishSession(
+            session,
+            endTime: endedAt,
+            duration: actualDuration,
+            isCompleted: isCompleted
+        )
+        clearCurrentSession()
+    }
+
+    private func clearCurrentSession() {
+        currentSession = nil
+        sessionStartTime = nil
+        accumulatedPausedDuration = 0
+    }
+
+    private func normalizedTaskName(_ taskName: String) -> String {
+        let trimmed = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "专注时间" : trimmed
     }
 }

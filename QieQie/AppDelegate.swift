@@ -1,10 +1,14 @@
 import AppKit
+import OSLog
 import SwiftUI
 import SwiftData
 
 /// 应用代理
 /// 负责应用生命周期管理和初始化核心组件
 class AppDelegate: NSObject, NSApplicationDelegate {
+    /// 启动日志
+    private let logger = Logger(subsystem: "com.zhangzefu.qieqie", category: "App")
+
     /// 倒计时管理器
     private var focusTimerManager: FocusTimerManager?
 
@@ -18,17 +22,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // 初始化 SwiftData 模型容器
+        let focusHistoryManager: FocusHistoryManager?
+
         do {
             modelContainer = try ModelContainer(for: FocusSession.self)
+            focusHistoryManager = modelContainer.map(FocusHistoryManager.init(modelContainer:))
         } catch {
-            print("Failed to create ModelContainer: \(error)")
+            focusHistoryManager = nil
+            logger.error("Failed to create ModelContainer: \(error.localizedDescription, privacy: .public)")
         }
 
         // 初始化倒计时管理器
-        focusTimerManager = FocusTimerManager()
-
-        // 初始化历史记录管理器
-        focusTimerManager?.initialize(modelContainer: modelContainer)
+        focusTimerManager = FocusTimerManager(focusHistoryManager: focusHistoryManager)
 
         // 初始化菜单栏管理器
         if let focusTimerManager = focusTimerManager {

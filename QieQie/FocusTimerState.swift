@@ -1,7 +1,7 @@
 import Foundation
 
 /// 倒计时状态枚举
-enum FocusTimerStatus {
+enum FocusTimerStatus: Equatable {
     case idle        // 未设置倒计时
     case running     // 运行中
     case paused      // 暂停状态
@@ -32,5 +32,37 @@ struct FocusTimerState {
             return max(0, endTime.timeIntervalSince(pausedAt))
         }
         return max(0, endTime.timeIntervalSinceNow)
+    }
+
+    /// 时间输入是否应锁定
+    var isEditingLocked: Bool {
+        status == .running || status == .paused
+    }
+
+    /// 是否允许重置
+    var canReset: Bool {
+        status != .idle
+    }
+
+    /// 重新发布当前状态以触发视图刷新
+    func refreshed() -> FocusTimerState {
+        FocusTimerState(
+            endTime: endTime,
+            lastDuration: lastDuration,
+            isPaused: isPaused,
+            pausedAt: pausedAt,
+            taskName: taskName
+        )
+    }
+
+    /// 回到 idle 状态，但保留最近一次输入，方便再次开始
+    func idlePreservingInputs() -> FocusTimerState {
+        FocusTimerState(
+            endTime: nil,
+            lastDuration: lastDuration,
+            isPaused: false,
+            pausedAt: nil,
+            taskName: taskName
+        )
     }
 }

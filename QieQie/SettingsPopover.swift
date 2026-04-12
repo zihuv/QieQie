@@ -1,12 +1,10 @@
+import Combine
 import SwiftUI
 
 /// 设置弹窗视图
 struct SettingsPopover: View {
     /// 倒计时管理器
     @ObservedObject var focusTimerManager: FocusTimerManager
-
-    /// 表示模式（用于关闭 Popover）
-    @Environment(\.presentationMode) var presentationMode
 
     /// 分钟输入
     @State private var minutes: String = "25"
@@ -23,9 +21,12 @@ struct SettingsPopover: View {
     /// 是否显示历史记录
     @State private var showHistoryState: Bool = false
 
+    /// 设置面板统计数据快照，避免每次重绘都查询数据库
+    @State private var dashboardStats = FocusStatistics()
+
     var body: some View {
-        if showHistoryState {
-            HistoryView(focusTimerManager: focusTimerManager, showHistory: $showHistoryState)
+        if showHistoryState, let historyManager = focusTimerManager.focusHistoryManager {
+            HistoryView(historyManager: historyManager, showHistory: $showHistoryState)
         } else {
             mainContent
         }
@@ -49,12 +50,19 @@ struct SettingsPopover: View {
             controlButtonsSection
         }
         .padding(20)
-        .frame(width: 260, height: 280)
+        .frame(width: 280, height: 300)
         .onAppear {
-            // 重置错误状态
-            showError = false
-            // 同步当前任务名称
-            taskName = focusTimerManager.state.taskName
+            syncFromState()
+            refreshStatistics()
+        }
+        .onReceive(focusTimerManager.$state.map(\.status).removeDuplicates()) { _ in
+            syncFromState()
+            refreshStatistics()
+        }
+        .onChange(of: showHistoryState) { _, isShowingHistory in
+            if !isShowingHistory {
+                refreshStatistics()
+            }
         }
     }
 
@@ -88,7 +96,10 @@ struct SettingsPopover: View {
                     .padding(.vertical, 6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
-                    .disabled(focusTimerManager.state.status == .running || focusTimerManager.state.status == .paused)
+                    .disabled(focusTimerManager.state.isEditingLocked)
+                    .onChange(of: minutes) { _, newValue in
+                        minutes = sanitizeNumericInput(newValue, maxLength: 3)
+                    }
 
                 Text(":")
                     .font(.system(size: 20, weight: .medium))
@@ -103,9 +114,12 @@ struct SettingsPopover: View {
                     .padding(.vertical, 6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
-                    .disabled(focusTimerManager.state.status == .running || focusTimerManager.state.status == .paused)
+                    .disabled(focusTimerManager.state.isEditingLocked)
+                    .onChange(of: seconds) { _, newValue in
+                        seconds = sanitizeNumericInput(newValue, maxLength: 2, upperBound: 59)
+                    }
             }
-            .opacity(focusTimerManager.state.status == .running || focusTimerManager.state.status == .paused ? 0.5 : 1.0)
+            .opacity(focusTimerManager.state.isEditingLocked ? 0.5 : 1.0)
 
             // 错误提示
             if showError {
@@ -152,6 +166,7 @@ struct SettingsPopover: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(.accentColor)
+            .disabled(focusTimerManager.focusHistoryManager == nil)
         }
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
@@ -179,7 +194,7 @@ struct SettingsPopover: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .disabled(focusTimerManager.state.status == .idle)
+            .disabled(!focusTimerManager.state.canReset)
         }
     }
 
@@ -187,16 +202,12 @@ struct SettingsPopover: View {
 
     /// 今日时长
     private var todayDuration: String {
-        guard let manager = focusTimerManager.focusHistoryManager else { return "0分钟" }
-        let stats = manager.getTodayStatistics()
-        return FocusStatistics.formatDuration(stats.todayTotal)
+        FocusStatistics.formatDuration(dashboardStats.todayTotal)
     }
 
     /// 本周时长
     private var weekDuration: String {
-        guard let manager = focusTimerManager.focusHistoryManager else { return "0分钟" }
-        let stats = manager.getWeekStatistics()
-        return FocusStatistics.formatDuration(stats.weekTotal)
+        FocusStatistics.formatDuration(dashboardStats.weekTotal)
     }
 
     /// 主按钮标题
@@ -227,20 +238,6 @@ struct SettingsPopover: View {
 
     // MARK: - 私有方法
 
-    /// 格式化时间
-    private func formatTime(_ interval: TimeInterval) -> String {
-        let time = Int(interval)
-        let hours = time / 3600
-        let minutes = (time % 3600) / 60
-        let seconds = time % 60
-
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%02d:%02d", minutes, seconds)
-        }
-    }
-
     /// 开始倒计时
     private func startFocusTimer() {
         // 解析输入
@@ -248,6 +245,7 @@ struct SettingsPopover: View {
               let sec = Int(seconds),
               min >= 0,
               sec >= 0,
+              sec < 60,
               min * 60 + sec > 0 else {
             showError = true
             return
@@ -268,18 +266,51 @@ struct SettingsPopover: View {
         case .idle, .finished:
             // 开始新倒计时
             startFocusTimer()
-        case .running:
-            // 暂停倒计时
-            focusTimerManager.pauseFocusTimer()
-        case .paused:
-            // 恢复倒计时
-            focusTimerManager.resumeFocusTimer()
+        case .running, .paused:
+            focusTimerManager.togglePause()
         }
     }
 
     /// 重置倒计时
     private func resetFocusTimer() {
         focusTimerManager.resetFocusTimer()
+        syncFromState()
+        refreshStatistics()
+    }
+
+    private func refreshStatistics() {
+        dashboardStats = focusTimerManager.focusHistoryManager?.getDashboardStatistics() ?? FocusStatistics()
+    }
+
+    private func syncFromState() {
+        showError = false
+
+        if !focusTimerManager.state.taskName.isEmpty {
+            taskName = focusTimerManager.state.taskName
+        }
+
+        if let lastDuration = focusTimerManager.state.lastDuration {
+            setTimeFields(from: lastDuration)
+        }
+    }
+
+    private func setTimeFields(from duration: TimeInterval) {
+        let clampedDuration = max(0, Int(duration.rounded(.down)))
+        let totalMinutes = clampedDuration / 60
+        let remainingSeconds = clampedDuration % 60
+
+        minutes = String(totalMinutes)
+        seconds = String(format: "%02d", remainingSeconds)
+    }
+
+    private func sanitizeNumericInput(_ value: String, maxLength: Int, upperBound: Int? = nil) -> String {
+        var sanitized = String(value.filter(\.isNumber).prefix(maxLength))
+
+        if let upperBound, let number = Int(sanitized), number > upperBound {
+            sanitized = String(upperBound)
+        }
+
+        return sanitized
     }
 }
 

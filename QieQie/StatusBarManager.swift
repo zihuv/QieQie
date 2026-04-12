@@ -9,7 +9,7 @@ import SwiftUI
 /// 3. 处理菜单点击事件
 /// 4. 显示设置 Popover
 @MainActor
-class StatusBarManager {
+final class StatusBarManager {
     /// 状态栏项
     private var statusItem: NSStatusItem?
 
@@ -27,7 +27,6 @@ class StatusBarManager {
     init(focusTimerManager: FocusTimerManager) {
         self.focusTimerManager = focusTimerManager
         setupStatusBar()
-        setupMenu()
         observeStateChanges()
     }
 
@@ -52,11 +51,6 @@ class StatusBarManager {
         }
 
         updateTitle()
-    }
-
-    /// 创建菜单
-    private func setupMenu() {
-        // 菜单在右键时动态创建
     }
 
     /// 状态栏按钮点击事件
@@ -106,45 +100,18 @@ class StatusBarManager {
 
     /// 更新菜单栏标题
     private func updateTitle() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self, let button = self.statusItem?.button else { return }
+        guard let button = statusItem?.button else { return }
 
-            switch self.focusTimerManager.state.status {
-            case .idle:
-                button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle")
-                button.title = ""
-            case .running:
-                button.image = nil
-                if let remaining = self.focusTimerManager.state.remainingTime {
-                    button.title = self.formatTime(remaining)
-                }
-            case .paused:
-                button.image = nil
-                if let remaining = self.focusTimerManager.state.remainingTime {
-                    button.title = self.formatTime(remaining)
-                }
-            case .finished:
-                button.image = nil
-                button.title = "Done"
-            }
-        }
-    }
-
-    /// 格式化时间
-    /// - Parameter interval: 时间间隔（秒）
-    /// - Returns: 格式化的时间字符串
-    /// - 小于 1 小时：MM:SS
-    /// - 大于等于 1 小时：H:MM:SS
-    private func formatTime(_ interval: TimeInterval) -> String {
-        let time = Int(interval)
-        let hours = time / 3600
-        let minutes = (time % 3600) / 60
-        let seconds = time % 60
-
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%02d:%02d", minutes, seconds)
+        switch focusTimerManager.state.status {
+        case .idle:
+            button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle")
+            button.title = ""
+        case .running, .paused:
+            button.image = nil
+            button.title = FocusDisplayFormatter.countdown(focusTimerManager.state.remainingTime ?? 0)
+        case .finished:
+            button.image = nil
+            button.title = "Done"
         }
     }
 
@@ -161,7 +128,7 @@ class StatusBarManager {
 
         // 创建新的 Popover
         let newPopover = NSPopover()
-        newPopover.contentSize = NSSize(width: 260, height: 180)
+        newPopover.contentSize = NSSize(width: 320, height: 400)
         newPopover.behavior = .transient
         newPopover.contentViewController = NSHostingController(
             rootView: SettingsPopover(focusTimerManager: focusTimerManager)

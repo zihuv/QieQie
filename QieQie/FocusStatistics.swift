@@ -1,5 +1,13 @@
 import Foundation
 
+/// 统计时间范围
+enum FocusStatisticsScope {
+    case today
+    case week
+    case month
+    case allTime
+}
+
 /// 专注统计数据模型
 /// 用于展示不同时间范围的统计数据
 struct FocusStatistics {
@@ -25,15 +33,64 @@ struct FocusStatistics {
     /// - Parameter interval: 时长（秒）
     /// - Returns: 格式化的时间字符串
     static func formatDuration(_ interval: TimeInterval) -> String {
+        FocusDisplayFormatter.duration(interval)
+    }
+}
+
+/// 展示层格式化工具，集中管理倒计时、时长和日期格式化逻辑
+enum FocusDisplayFormatter {
+    private static let mediumDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    private static let shortTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    static func countdown(_ interval: TimeInterval) -> String {
+        let time = max(0, Int(interval.rounded(.down)))
+        let hours = time / 3600
+        let minutes = (time % 3600) / 60
+        let seconds = time % 60
+
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    static func duration(_ interval: TimeInterval) -> String {
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
+        let seconds = Int(interval) % 60
 
         if hours > 0 {
             return "\(hours)小时\(minutes)分钟"
-        } else if minutes > 0 {
-            return "\(minutes)分钟"
-        } else {
-            return "0分钟"
         }
+
+        if minutes > 0 {
+            return "\(minutes)分钟"
+        }
+
+        if seconds > 0 {
+            return "\(seconds)秒"
+        }
+
+        return "0分钟"
+    }
+
+    static func date(_ date: Date) -> String {
+        mediumDateFormatter.string(from: date)
+    }
+
+    static func time(_ date: Date) -> String {
+        shortTimeFormatter.string(from: date)
     }
 }
