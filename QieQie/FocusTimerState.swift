@@ -36,7 +36,7 @@ struct FocusTimerState {
 
     /// 时间输入是否应锁定
     var isEditingLocked: Bool {
-        status == .running || status == .paused
+        status == .running
     }
 
     /// 是否允许重置

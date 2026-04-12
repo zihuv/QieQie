@@ -1,8 +1,13 @@
-import Combine
 import SwiftUI
 
 /// 设置弹窗视图
 struct SettingsPopover: View {
+    private enum InputField: Hashable {
+        case taskName
+        case minutes
+        case seconds
+    }
+
     /// 倒计时管理器
     @ObservedObject var focusTimerManager: FocusTimerManager
 
@@ -24,6 +29,8 @@ struct SettingsPopover: View {
     /// 设置面板统计数据快照，避免每次重绘都查询数据库
     @State private var dashboardStats = FocusStatistics()
 
+    @State private var isStartingFocusTimer = false
+    @FocusState private var focusedField: InputField?
     var body: some View {
         if showHistoryState, let historyManager = focusTimerManager.focusHistoryManager {
             HistoryView(historyManager: historyManager, showHistory: $showHistoryState)
@@ -54,10 +61,13 @@ struct SettingsPopover: View {
         .onAppear {
             syncFromState()
             refreshStatistics()
+            restoreInputFocus(to: .minutes)
         }
-        .onReceive(focusTimerManager.$state.map(\.status).removeDuplicates()) { _ in
+        .onChange(of: focusTimerManager.state.status) { oldStatus, newStatus in
+            isStartingFocusTimer = false
             syncFromState()
             refreshStatistics()
+            restoreInputFocusIfNeeded(from: oldStatus, to: newStatus)
         }
         .onChange(of: showHistoryState) { _, isShowingHistory in
             if !isShowingHistory {
@@ -80,6 +90,7 @@ struct SettingsPopover: View {
                 .padding(.vertical, 6)
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(6)
+                .focused($focusedField, equals: .taskName)
         }
     }
 
@@ -96,7 +107,8 @@ struct SettingsPopover: View {
                     .padding(.vertical, 6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
-                    .disabled(focusTimerManager.state.isEditingLocked)
+                    .disabled(isTimeInputLocked)
+                    .focused($focusedField, equals: .minutes)
                     .onChange(of: minutes) { _, newValue in
                         minutes = sanitizeNumericInput(newValue, maxLength: 3)
                     }
@@ -114,12 +126,13 @@ struct SettingsPopover: View {
                     .padding(.vertical, 6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
-                    .disabled(focusTimerManager.state.isEditingLocked)
+                    .disabled(isTimeInputLocked)
+                    .focused($focusedField, equals: .seconds)
                     .onChange(of: seconds) { _, newValue in
                         seconds = sanitizeNumericInput(newValue, maxLength: 2, upperBound: 59)
                     }
             }
-            .opacity(focusTimerManager.state.isEditingLocked ? 0.5 : 1.0)
+            .opacity(isTimeInputLocked ? 0.5 : 1.0)
 
             // 错误提示
             if showError {
@@ -210,6 +223,10 @@ struct SettingsPopover: View {
         FocusStatistics.formatDuration(dashboardStats.weekTotal)
     }
 
+    private var isTimeInputLocked: Bool {
+        isStartingFocusTimer || focusTimerManager.state.isEditingLocked
+    }
+
     /// 主按钮标题
     private var mainButtonTitle: String {
         switch focusTimerManager.state.status {
@@ -240,18 +257,13 @@ struct SettingsPopover: View {
 
     /// 开始倒计时
     private func startFocusTimer() {
-        // 解析输入
-        guard let min = Int(minutes),
-              let sec = Int(seconds),
-              min >= 0,
-              sec >= 0,
-              sec < 60,
-              min * 60 + sec > 0 else {
+        guard let duration = validatedDuration() else {
             showError = true
             return
         }
 
-        let duration = TimeInterval(min * 60 + sec)
+        isStartingFocusTimer = true
+        focusedField = nil
 
         // 启动倒计时，传入任务名称
         focusTimerManager.startFocusTimer(duration: duration, taskName: taskName)
@@ -266,8 +278,10 @@ struct SettingsPopover: View {
         case .idle, .finished:
             // 开始新倒计时
             startFocusTimer()
-        case .running, .paused:
-            focusTimerManager.togglePause()
+        case .running:
+            focusTimerManager.pauseFocusTimer()
+        case .paused:
+            resumeFocusTimer()
         }
     }
 
@@ -289,9 +303,23 @@ struct SettingsPopover: View {
             taskName = focusTimerManager.state.taskName
         }
 
-        if let lastDuration = focusTimerManager.state.lastDuration {
+        if focusTimerManager.state.status == .paused,
+           let remainingTime = focusTimerManager.state.remainingTime {
+            setTimeFields(from: remainingTime)
+        } else if let lastDuration = focusTimerManager.state.lastDuration {
             setTimeFields(from: lastDuration)
         }
+    }
+
+    private func resumeFocusTimer() {
+        guard let duration = validatedDuration() else {
+            showError = true
+            return
+        }
+
+        focusTimerManager.updatePausedRemainingTime(duration: duration)
+        focusTimerManager.resumeFocusTimer()
+        showError = false
     }
 
     private func setTimeFields(from duration: TimeInterval) {
@@ -311,6 +339,32 @@ struct SettingsPopover: View {
         }
 
         return sanitized
+    }
+
+    private func validatedDuration() -> TimeInterval? {
+        guard let min = Int(minutes),
+              let sec = Int(seconds),
+              min >= 0,
+              sec >= 0,
+              sec < 60,
+              min * 60 + sec > 0 else {
+            return nil
+        }
+
+        return TimeInterval(min * 60 + sec)
+    }
+
+    private func restoreInputFocusIfNeeded(from oldStatus: FocusTimerStatus, to newStatus: FocusTimerStatus) {
+        guard !showHistoryState,
+              newStatus != .running,
+              oldStatus == .running || oldStatus == .paused || oldStatus == .finished else { return }
+        restoreInputFocus(to: .minutes)
+    }
+
+    private func restoreInputFocus(to field: InputField) {
+        DispatchQueue.main.async {
+            focusedField = field
+        }
     }
 }
 

@@ -11,7 +11,8 @@ import SwiftUI
 @MainActor
 final class StatusBarManager {
     private let finishedTitle = "Done"
-    private let titlePadding: CGFloat = 12
+    // NSStatusBarButton 自带左右留白，这里只补少量余量避免文字贴边。
+    private let titlePadding: CGFloat = 0
     private let titleAttributes: [NSAttributedString.Key: Any] = [
         .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
     ]
@@ -100,6 +101,7 @@ final class StatusBarManager {
             // reading a stale pre-update value from `focusTimerManager.state`.
             .sink { [weak self] state in
                 self?.updateTitle(for: state)
+                self?.restorePopoverFocusIfNeeded(for: state)
             }
             .store(in: &cancellables)
     }
@@ -196,6 +198,17 @@ final class StatusBarManager {
         )
     }
 
+    private func restorePopoverFocusIfNeeded(for state: FocusTimerState) {
+        guard state.status != .running,
+              let popover,
+              popover.isShown else { return }
+
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+    }
+
     // MARK: - 菜单操作
 
     /// 显示设置 Popover
@@ -222,6 +235,11 @@ final class StatusBarManager {
                 of: button,
                 preferredEdge: .minY
             )
+
+            DispatchQueue.main.async {
+                NSApp.activate(ignoringOtherApps: true)
+                newPopover.contentViewController?.view.window?.makeKey()
+            }
         }
 
         popover = newPopover

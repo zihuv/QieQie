@@ -127,6 +127,21 @@ final class FocusTimerManager: ObservableObject {
         }
     }
 
+    /// 在暂停状态下更新剩余时间，供用户调整后继续计时
+    func updatePausedRemainingTime(duration: TimeInterval) {
+        guard state.status == .paused, let pausedAt = state.pausedAt else { return }
+
+        let adjustedDuration = max(1, duration.rounded(.down))
+
+        state = FocusTimerState(
+            endTime: pausedAt.addingTimeInterval(adjustedDuration),
+            lastDuration: adjustedDuration,
+            isPaused: true,
+            pausedAt: pausedAt,
+            taskName: state.taskName
+        )
+    }
+
     // MARK: - 私有方法
 
     /// 启动 1 秒定时器
