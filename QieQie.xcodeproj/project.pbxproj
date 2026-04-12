@@ -24,6 +24,7 @@
 		E1029 /* FocusTimerDurationParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1028; };
 		E1031 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1030; };
 		E1033 /* FocusTimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1032; };
+		E1035 /* SettingsPopoverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1034; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +55,7 @@
 		E1028 /* FocusTimerDurationParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerDurationParserTests.swift; sourceTree = "<group>"; };
 		E1030 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
 		E1032 /* FocusTimerManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerManagerTests.swift; sourceTree = "<group>"; };
+		E1034 /* SettingsPopoverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopoverTests.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2001 /* QieQie.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QieQie.entitlements; sourceTree = "<group>"; };
 		E9000 /* QieQie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QieQie.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -158,6 +160,7 @@
 				E1032,
 				E1026,
 				E1028,
+				E1034,
 			);
 			path = QieQieTests;
 			sourceTree = "<group>";
@@ -282,6 +285,7 @@
 				E1033 /* FocusTimerManagerTests.swift in Sources */,
 				E1027 /* FocusTimerEngineTests.swift in Sources */,
 				E1029 /* FocusTimerDurationParserTests.swift in Sources */,
+				E1035 /* SettingsPopoverTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

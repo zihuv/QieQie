@@ -44,7 +44,7 @@ struct FocusTimerState {
 
     /// 时间输入是否应锁定
     var isEditingLocked: Bool {
-        status == .running
+        status == .running || status == .paused
     }
 
     /// 是否允许重置

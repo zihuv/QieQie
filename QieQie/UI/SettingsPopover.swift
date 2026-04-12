@@ -329,21 +329,12 @@ struct SettingsPopover: View {
             taskName = focusTimerManager.state.taskName
         }
 
-        if focusTimerManager.state.status == .paused,
-           let remainingTime = focusTimerManager.state.remainingTime {
-            setTimeFields(from: remainingTime)
-        } else if let lastDuration = focusTimerManager.state.lastDuration {
+        if let lastDuration = focusTimerManager.state.lastDuration {
             setTimeFields(from: lastDuration)
         }
     }
 
     private func resumeFocusTimer() {
-        guard let duration = validatedDuration() else {
-            showError = true
-            return
-        }
-
-        focusTimerManager.updatePausedRemainingTime(duration: duration)
         focusTimerManager.resumeFocusTimer()
         showError = false
     }
@@ -367,7 +358,7 @@ struct SettingsPopover: View {
 
     private func restoreInputFocusIfNeeded(from oldStatus: FocusTimerStatus, to newStatus: FocusTimerStatus) {
         guard !showHistoryState,
-              newStatus != .running,
+              newStatus == .idle || newStatus == .finished,
               oldStatus == .running || oldStatus == .paused || oldStatus == .finished else { return }
         restoreInputFocus(to: .minutes)
     }
