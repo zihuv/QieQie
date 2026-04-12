@@ -2,7 +2,7 @@
 
 <div align=center>
 
-[![Release Downloads](https://img.shields.io/github/downloads/zihuv/timer/VERSION/total?style=flat-square&logo=github)](https://img.shields.io/github/downloads/zihuv/timer/VERSION/)
+[![Release Downloads](https://img.shields.io/github/downloads/zihuv/QieQie/VERSION/total?style=flat-square&logo=github)](https://img.shields.io/github/downloads/zihuv/QieQie/VERSION/)
 
 </div>
 
@@ -20,7 +20,7 @@
         <tr>
             <td>macOS</td>
             <td>
-                <a href="https://github.com/zihuv/timer/releases/download/VERSION/QieQie-VERSION-macOS.zip"><img src="https://img.shields.io/badge/ZIP-macOS-%23000000.svg?logo=apple"></a>
+                <a href="https://github.com/zihuv/QieQie/releases/download/VERSION/QieQie-VERSION-macOS.zip"><img src="https://img.shields.io/badge/ZIP-macOS-%23000000.svg?logo=apple"></a>
             </td>
         </tr>
     </tbody>
