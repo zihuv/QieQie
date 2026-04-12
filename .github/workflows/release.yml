@@ -1,0 +1,196 @@
+name: Release
+
+run-name: Release ${{ inputs.version || github.ref_name }}
+
+on:
+  push:
+    tags:
+      - "*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号，例如 0.0.1"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.prepare_release.outputs.version }}
+      tag: ${{ steps.prepare_release.outputs.tag }}
+      release_name: ${{ steps.prepare_release.outputs.release_name }}
+      release_id: ${{ steps.release.outputs.release_id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare release metadata
+        id: prepare_release
+        run: ./scripts/prepare-release.sh "${{ inputs.version || github.ref_name }}"
+
+      - name: Create or update draft release
+        id: release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.prepare_release.outputs.tag }}
+          RELEASE_NAME: ${{ steps.prepare_release.outputs.release_name }}
+          RELEASE_BODY: ${{ steps.prepare_release.outputs.body }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = process.env.RELEASE_TAG;
+            const releaseName = process.env.RELEASE_NAME;
+            const body = process.env.RELEASE_BODY;
+            let release;
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag,
+              });
+              release = existing.data;
+
+              if (!release.draft) {
+                core.setFailed(`Release ${tag} already exists and is not a draft.`);
+                return;
+              }
+
+              release = (
+                await github.rest.repos.updateRelease({
+                  owner,
+                  repo,
+                  release_id: release.id,
+                  tag_name: tag,
+                  name: releaseName,
+                  body,
+                  draft: true,
+                  prerelease: false,
+                })
+              ).data;
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              release = (
+                await github.rest.repos.createRelease({
+                  owner,
+                  repo,
+                  tag_name: tag,
+                  name: releaseName,
+                  body,
+                  draft: true,
+                  prerelease: false,
+                  target_commitish: context.sha,
+                })
+              ).data;
+            }
+
+            core.setOutput("release_id", String(release.id));
+
+  build:
+    name: Build release archive
+    needs: prepare
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build QieQie
+        run: |
+          xcodebuild -project QieQie.xcodeproj \
+            -scheme QieQie \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package release archive
+        run: |
+          mkdir -p artifacts
+          cp -R build/Build/Products/Release/QieQie.app artifacts/
+          cd artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            QieQie.app \
+            QieQie-${{ needs.prepare.outputs.version }}-macOS.zip
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qieqie-release-${{ needs.prepare.outputs.version }}
+          path: artifacts/QieQie-${{ needs.prepare.outputs.version }}-macOS.zip
+          retention-days: 30
+
+      - name: Remove existing release asset
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+          ASSET_NAME: QieQie-${{ needs.prepare.outputs.version }}-macOS.zip
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const releaseId = Number(process.env.RELEASE_ID);
+            const assetName = process.env.ASSET_NAME;
+            const assets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner,
+              repo,
+              release_id: releaseId,
+              per_page: 100,
+            });
+            const existing = assets.find((asset) => asset.name === assetName);
+
+            if (existing) {
+              await github.rest.repos.deleteReleaseAsset({
+                owner,
+                repo,
+                asset_id: existing.id,
+              });
+            }
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: artifacts/QieQie-${{ needs.prepare.outputs.version }}-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish release
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish draft release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: Number("${{ needs.prepare.outputs.release_id }}"),
+              draft: false,
+              prerelease: false,
+            });

@@ -16,10 +16,3 @@ QieQie 是一个 macOS 菜单栏专注计时器。它常驻在菜单栏里，用
 3. 输入任务名称和时长
 4. 点击 `Start` 开始专注
 5. 右键菜单栏图标可以退出
-
-## 运行
-
-- 用 Xcode 打开 `QieQie.xcodeproj`
-- 或在项目根目录运行 `./build.sh`
-
-构建完成后，应用会出现在 `build/QieQie.app`。
