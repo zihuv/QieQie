@@ -14,7 +14,7 @@ Launch the compiled app bundle from `build/Build/Products/Debug/` after a succes
 Follow the existing Swift style: 4-space indentation, `UpperCamelCase` for types, `lowerCamelCase` for properties and methods, and one primary type per file when practical. Keep `@MainActor` UI-facing managers on the main thread and prefer small, descriptive helper methods over long view bodies. No repo-level `SwiftFormat` or `SwiftLint` config exists yet, so use Xcode’s formatter and match surrounding code.
 
 ## Testing Guidelines
-There is no committed XCTest target or coverage gate yet. For logic changes, at minimum run a clean Debug build and manually exercise the menu bar flow. When adding tests, create a dedicated test target, name files `*Tests.swift`, and focus on timer state transitions, pause/resume math, and persistence-backed history aggregation.
+There is no committed XCTest target or coverage gate yet. For logic changes, at minimum run a clean Debug build and manually exercise the menu bar flow. After completing a feature, the agent must run the relevant tests or manual checks itself before handing off work, and should use the `test-and-verify` skill for behavior changes or bug fixes. When adding tests, create a dedicated test target, name files `*Tests.swift`, and focus on timer state transitions, pause/resume math, and persistence-backed history aggregation.
 
 ## Commit & Pull Request Guidelines
 Recent history shows short, direct commit subjects; keep them concise and imperative. Pull requests should include a clear summary, manual verification steps, linked issues when relevant, and screenshots or short recordings for menu bar, popover, or history UI changes.
