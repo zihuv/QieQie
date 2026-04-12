@@ -6,7 +6,7 @@ import SwiftData
 /// 负责应用生命周期管理和初始化核心组件
 class AppDelegate: NSObject, NSApplicationDelegate {
     /// 倒计时管理器
-    private var countdownManager: CountdownManager?
+    private var focusTimerManager: FocusTimerManager?
 
     /// 菜单栏管理器
     private var statusBarManager: StatusBarManager?
@@ -25,14 +25,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // 初始化倒计时管理器
-        countdownManager = CountdownManager()
+        focusTimerManager = FocusTimerManager()
 
         // 初始化历史记录管理器
-        countdownManager?.initialize(modelContainer: modelContainer)
+        focusTimerManager?.initialize(modelContainer: modelContainer)
 
         // 初始化菜单栏管理器
-        if let countdownManager = countdownManager {
-            statusBarManager = StatusBarManager(countdownManager: countdownManager)
+        if let focusTimerManager = focusTimerManager {
+            statusBarManager = StatusBarManager(focusTimerManager: focusTimerManager)
         }
 
         // 设置应用策略为辅助应用（无 Dock 图标）

@@ -3,7 +3,7 @@ import SwiftUI
 /// 设置弹窗视图
 struct SettingsPopover: View {
     /// 倒计时管理器
-    @ObservedObject var countdownManager: CountdownManager
+    @ObservedObject var focusTimerManager: FocusTimerManager
 
     /// 表示模式（用于关闭 Popover）
     @Environment(\.presentationMode) var presentationMode
@@ -25,7 +25,7 @@ struct SettingsPopover: View {
 
     var body: some View {
         if showHistoryState {
-            HistoryView(countdownManager: countdownManager, showHistory: $showHistoryState)
+            HistoryView(focusTimerManager: focusTimerManager, showHistory: $showHistoryState)
         } else {
             mainContent
         }
@@ -54,7 +54,7 @@ struct SettingsPopover: View {
             // 重置错误状态
             showError = false
             // 同步当前任务名称
-            taskName = countdownManager.state.taskName
+            taskName = focusTimerManager.state.taskName
         }
     }
 
@@ -88,7 +88,7 @@ struct SettingsPopover: View {
                     .padding(.vertical, 6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
-                    .disabled(countdownManager.state.status == .running || countdownManager.state.status == .paused)
+                    .disabled(focusTimerManager.state.status == .running || focusTimerManager.state.status == .paused)
 
                 Text(":")
                     .font(.system(size: 20, weight: .medium))
@@ -103,9 +103,9 @@ struct SettingsPopover: View {
                     .padding(.vertical, 6)
                     .background(Color(NSColor.controlBackgroundColor))
                     .cornerRadius(6)
-                    .disabled(countdownManager.state.status == .running || countdownManager.state.status == .paused)
+                    .disabled(focusTimerManager.state.status == .running || focusTimerManager.state.status == .paused)
             }
-            .opacity(countdownManager.state.status == .running || countdownManager.state.status == .paused ? 0.5 : 1.0)
+            .opacity(focusTimerManager.state.status == .running || focusTimerManager.state.status == .paused ? 0.5 : 1.0)
 
             // 错误提示
             if showError {
@@ -173,13 +173,13 @@ struct SettingsPopover: View {
             .controlSize(.large)
 
             // Reset 按钮
-            Button(action: resetCountdown) {
+            Button(action: resetFocusTimer) {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 15))
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .disabled(countdownManager.state.status == .idle)
+            .disabled(focusTimerManager.state.status == .idle)
         }
     }
 
@@ -187,21 +187,21 @@ struct SettingsPopover: View {
 
     /// 今日时长
     private var todayDuration: String {
-        guard let manager = countdownManager.focusHistoryManager else { return "0分钟" }
+        guard let manager = focusTimerManager.focusHistoryManager else { return "0分钟" }
         let stats = manager.getTodayStatistics()
         return FocusStatistics.formatDuration(stats.todayTotal)
     }
 
     /// 本周时长
     private var weekDuration: String {
-        guard let manager = countdownManager.focusHistoryManager else { return "0分钟" }
+        guard let manager = focusTimerManager.focusHistoryManager else { return "0分钟" }
         let stats = manager.getWeekStatistics()
         return FocusStatistics.formatDuration(stats.weekTotal)
     }
 
     /// 主按钮标题
     private var mainButtonTitle: String {
-        switch countdownManager.state.status {
+        switch focusTimerManager.state.status {
         case .idle:
             return "Start"
         case .running:
@@ -215,7 +215,7 @@ struct SettingsPopover: View {
 
     /// 主按钮图标
     private var mainButtonIcon: String {
-        switch countdownManager.state.status {
+        switch focusTimerManager.state.status {
         case .idle, .finished:
             return "play.fill"
         case .running:
@@ -242,7 +242,7 @@ struct SettingsPopover: View {
     }
 
     /// 开始倒计时
-    private func startCountdown() {
+    private func startFocusTimer() {
         // 解析输入
         guard let min = Int(minutes),
               let sec = Int(seconds),
@@ -256,7 +256,7 @@ struct SettingsPopover: View {
         let duration = TimeInterval(min * 60 + sec)
 
         // 启动倒计时，传入任务名称
-        countdownManager.startCountdown(duration: duration, taskName: taskName)
+        focusTimerManager.startFocusTimer(duration: duration, taskName: taskName)
 
         // 清除错误提示
         showError = false
@@ -264,28 +264,28 @@ struct SettingsPopover: View {
 
     /// 主按钮动作
     private func mainButtonAction() {
-        switch countdownManager.state.status {
+        switch focusTimerManager.state.status {
         case .idle, .finished:
             // 开始新倒计时
-            startCountdown()
+            startFocusTimer()
         case .running:
             // 暂停倒计时
-            countdownManager.pauseCountdown()
+            focusTimerManager.pauseFocusTimer()
         case .paused:
             // 恢复倒计时
-            countdownManager.resumeCountdown()
+            focusTimerManager.resumeFocusTimer()
         }
     }
 
     /// 重置倒计时
-    private func resetCountdown() {
-        countdownManager.resetCountdown()
+    private func resetFocusTimer() {
+        focusTimerManager.resetFocusTimer()
     }
 }
 
 /// 预览
 struct SettingsPopover_Previews: PreviewProvider {
     static var previews: some View {
-        SettingsPopover(countdownManager: CountdownManager())
+        SettingsPopover(focusTimerManager: FocusTimerManager())
     }
 }

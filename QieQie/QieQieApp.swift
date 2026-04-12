@@ -3,7 +3,7 @@ import SwiftData
 
 /// 应用入口
 @main
-struct countdownApp: App {
+struct QieQieApp: App {
     /// 应用代理
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 

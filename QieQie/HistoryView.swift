@@ -3,7 +3,7 @@ import SwiftUI
 /// 历史记录视图
 struct HistoryView: View {
     /// 倒计时管理器
-    @ObservedObject var countdownManager: CountdownManager
+    @ObservedObject var focusTimerManager: FocusTimerManager
 
     /// 返回按钮绑定
     @Binding var showHistory: Bool
@@ -181,7 +181,7 @@ struct HistoryView: View {
 
     /// 加载数据
     private func loadData() {
-        guard let manager = countdownManager.focusHistoryManager else { return }
+        guard let manager = focusTimerManager.focusHistoryManager else { return }
         groupedSessions = manager.getSessionsGroupedByDate()
         totalStats = manager.getAllTimeStatistics()
     }
@@ -189,7 +189,7 @@ struct HistoryView: View {
     /// 删除会话
     private func deleteSession() {
         guard let session = sessionToDelete,
-              let context = countdownManager.focusHistoryManager?.modelContainer?.mainContext else { return }
+              let context = focusTimerManager.focusHistoryManager?.modelContainer?.mainContext else { return }
 
         context.delete(session)
 
@@ -221,6 +221,6 @@ struct HistoryView: View {
 /// 预览
 struct HistoryView_Previews: PreviewProvider {
     static var previews: some View {
-        HistoryView(countdownManager: CountdownManager(), showHistory: .constant(true))
+        HistoryView(focusTimerManager: FocusTimerManager(), showHistory: .constant(true))
     }
 }

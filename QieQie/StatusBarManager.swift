@@ -17,15 +17,15 @@ class StatusBarManager {
     private var popover: NSPopover?
 
     /// 倒计时管理器
-    private let countdownManager: CountdownManager
+    private let focusTimerManager: FocusTimerManager
 
     /// Combine 订阅
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - 初始化
 
-    init(countdownManager: CountdownManager) {
-        self.countdownManager = countdownManager
+    init(focusTimerManager: FocusTimerManager) {
+        self.focusTimerManager = focusTimerManager
         setupStatusBar()
         setupMenu()
         observeStateChanges()
@@ -80,7 +80,7 @@ class StatusBarManager {
 
         // Quit 菜单项
         let quitItem = NSMenuItem(
-            title: "Quit",
+            title: "退出 QieQie",
             action: #selector(quit),
             keyEquivalent: "q"
         )
@@ -95,7 +95,7 @@ class StatusBarManager {
 
     /// 订阅状态变化
     private func observeStateChanges() {
-        countdownManager.$state
+        focusTimerManager.$state
             .sink { [weak self] _ in
                 self?.updateTitle()
             }
@@ -109,18 +109,18 @@ class StatusBarManager {
         DispatchQueue.main.async { [weak self] in
             guard let self = self, let button = self.statusItem?.button else { return }
 
-            switch self.countdownManager.state.status {
+            switch self.focusTimerManager.state.status {
             case .idle:
                 button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle")
                 button.title = ""
             case .running:
                 button.image = nil
-                if let remaining = self.countdownManager.state.remainingTime {
+                if let remaining = self.focusTimerManager.state.remainingTime {
                     button.title = self.formatTime(remaining)
                 }
             case .paused:
                 button.image = nil
-                if let remaining = self.countdownManager.state.remainingTime {
+                if let remaining = self.focusTimerManager.state.remainingTime {
                     button.title = self.formatTime(remaining)
                 }
             case .finished:
@@ -164,7 +164,7 @@ class StatusBarManager {
         newPopover.contentSize = NSSize(width: 260, height: 180)
         newPopover.behavior = .transient
         newPopover.contentViewController = NSHostingController(
-            rootView: SettingsPopover(countdownManager: countdownManager)
+            rootView: SettingsPopover(focusTimerManager: focusTimerManager)
         )
 
         // 显示 Popover

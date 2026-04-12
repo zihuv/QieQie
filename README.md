@@ -1,152 +1,25 @@
-# Countdown - macOS Menu Bar Countdown Timer
+# QieQie / 茄茄
 
-一个简洁的 macOS 菜单栏倒计时应用，完全使用原生框架构建（无外部依赖）。
+QieQie 是一个 macOS 菜单栏专注计时器。它常驻在菜单栏里，用来快速开始一段专注时间，不占桌面空间。
 
-## 功能特性
+## 功能
 
-- ✨ **菜单栏集成**：应用图标常驻菜单栏，不占用 Dock 空间
-- ⏱ **倒计时功能**：设置分钟和秒数，开始倒计时
-- ⏸ **暂停/继续**：支持暂停和恢复倒计时，不会丢失进度
-- 🔄 **智能重置**：Reset 重新开始上次设置的时长，而非回到空闲状态
-- ⌨ **快捷键支持**：
-  - `空格键`：暂停/继续
-  - `R 键`：重置倒计时
-  - `⌘,`：打开设置
-  - `⌘Q`：退出应用
+- 自定义分钟和秒数
+- 给每次专注写任务名称
+- 支持开始、暂停、继续、重置
+- 查看今日、本周和历史记录
 
-## 快速开始
+## 使用方式
 
-### 编译应用
+1. 启动 QieQie
+2. 左键菜单栏图标打开面板
+3. 输入任务名称和时长
+4. 点击 `Start` 开始专注
+5. 右键菜单栏图标可以退出
 
-```bash
-# 克隆或下载项目后，进入项目目录
-cd timer
+## 运行
 
-# 编译 Debug 版本
-./build.sh
+- 用 Xcode 打开 `QieQie.xcodeproj`
+- 或在项目根目录运行 `./build.sh`
 
-# 或编译 Release 版本（优化后，体积更小）
-./build.sh Release
-```
-
-### 运行应用
-
-编译完成后，有三种运行方式：
-
-```bash
-# 方法1：使用快捷脚本
-./build/run.sh
-
-# 方法2：直接打开 .app 文件
-open build/countdown.app
-
-# 方法3：双击 build/countdown.app 文件（在 Finder 中）
-```
-
-## 使用说明
-
-1. **启动应用**：运行应用后，菜单栏会出现 ⏱ 图标
-2. **设置倒计时**：
-   - 点击菜单栏图标 → 选择 "Settings..."
-   - 输入分钟和秒数（例如 25:00）
-   - 点击 "Start" 开始倒计时
-3. **暂停/继续**：
-   - 点击菜单栏图标 → 选择 "Pause" 暂停
-   - 选择 "Resume" 继续
-   - 或直接按空格键切换
-4. **重置倒计时**：
-   - 点击菜单栏图标 → 选择 "Reset"
-   - 或按 `R` 键
-   - 倒计时会重新开始上次设置的时长
-5. **退出应用**：点击菜单栏图标 → 选择 "Quit" 或按 `⌘Q`
-
-## 项目结构
-
-```
-timer/
-├── timer/
-│   └── timer/
-│       ├── countdownApp.swift          # 应用入口
-│       ├── AppDelegate.swift        # 应用生命周期管理
-│       ├── CountdownManager.swift   # 倒计时核心逻辑
-│       ├── CountdownState.swift     # 状态模型
-│       ├── StatusBarManager.swift   # 菜单栏 UI 管理
-│       ├── SettingsPopover.swift    # 设置界面
-│       ├── Info.plist               # 应用配置
-│       └── countdown.entitlements       # 权限配置
-├── timer.xcodeproj/                 # Xcode 项目文件
-├── create_project.sh                # 项目生成脚本
-└── build.sh                         # 构建脚本
-```
-
-## 技术栈
-
-- **语言**：Swift 5.0
-- **UI 框架**：SwiftUI + AppKit
-- **架构**：
-  - 单向数据流（Unidirectional Data Flow）
-  - 不可变状态模式（Immutable State）
-  - Combine 响应式编程
-- **最低系统要求**：macOS 12.0+
-
-## 开发
-
-### 在 Xcode 中开发
-
-```bash
-# 打开项目
-open timer/timer.xcodeproj
-
-# 在 Xcode 中按 ⌘R 运行
-```
-
-### 重新生成 Xcode 项目
-
-如果修改了项目结构，运行以下命令重新生成 Xcode 项目文件：
-
-```bash
-cd timer
-./create_project.sh
-```
-
-## 架构设计
-
-### 数据流
-
-```
-用户输入 (SettingsPopover)
-    → CountdownManager.startCountdown()
-    → 更新 state.endTime
-    → @Published 触发更新
-    → StatusBarManager 通过 Combine 接收变化
-    → 更新 NSStatusItem 标题
-```
-
-### 状态管理
-
-应用使用不可变状态模式，每次状态变更都创建新的 `CountdownState` 对象：
-
-```swift
-enum CountdownStatus {
-    case idle        // 未设置倒计时
-    case running     // 运行中
-    case paused      // 暂停状态
-    case finished    // 已完成
-}
-
-struct CountdownState {
-    var endTime: Date?
-    var lastDuration: TimeInterval?
-    var isPaused: Bool
-    var pausedAt: Date?
-    // ...
-}
-```
-
-## 许可证
-
-本项目仅供学习和个人使用。
-
-## 作者
-
-Created with ❤️ using Claude Code
+构建完成后，应用会出现在 `build/QieQie.app`。

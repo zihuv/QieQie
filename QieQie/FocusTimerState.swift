@@ -1,7 +1,7 @@
 import Foundation
 
 /// 倒计时状态枚举
-enum CountdownStatus {
+enum FocusTimerStatus {
     case idle        // 未设置倒计时
     case running     // 运行中
     case paused      // 暂停状态
@@ -10,7 +10,7 @@ enum CountdownStatus {
 
 /// 倒计时状态模型
 /// 核心设计：使用 endTime: Date 作为唯一真实数据源
-struct CountdownState {
+struct FocusTimerState {
     var endTime: Date?
     var lastDuration: TimeInterval?  // 上次设置的时长（用于 reset）
     var isPaused: Bool = false       // 是否暂停
@@ -18,7 +18,7 @@ struct CountdownState {
     var taskName: String = ""        // 当前任务名称
 
     /// 当前状态
-    var status: CountdownStatus {
+    var status: FocusTimerStatus {
         guard let endTime = endTime else { return .idle }
         if isPaused { return .paused }
         return endTime > Date() ? .running : .finished

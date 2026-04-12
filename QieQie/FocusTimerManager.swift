@@ -8,9 +8,9 @@ import SwiftData
 /// 2. 每秒触发状态更新
 /// 3. 提供启动/重置倒计时的方法
 @MainActor
-class CountdownManager: ObservableObject {
+class FocusTimerManager: ObservableObject {
     /// 发布的倒计时状态
-    @Published var state = CountdownState()
+    @Published var state = FocusTimerState()
 
     /// 计时器
     private var timer: Timer?
@@ -41,14 +41,14 @@ class CountdownManager: ObservableObject {
     /// - Parameters:
     ///   - duration: 倒计时时长（秒）
     ///   - taskName: 任务名称
-    func startCountdown(duration: TimeInterval, taskName: String = "") {
+    func startFocusTimer(duration: TimeInterval, taskName: String = "") {
         // 创建新的会话
         let effectiveTaskName = taskName.isEmpty ? "专注时间" : taskName
         sessionStartTime = Date()
         currentSession = focusHistoryManager?.createSession(taskName: effectiveTaskName)
 
         // 设置结束时间并重新赋值整个 state 对象以触发 @Published
-        state = CountdownState(
+        state = FocusTimerState(
             endTime: Date().addingTimeInterval(duration),
             lastDuration: duration,
             isPaused: false,
@@ -62,7 +62,7 @@ class CountdownManager: ObservableObject {
 
     /// 重置倒计时
     /// 将倒计时重置到空闲状态
-    func resetCountdown() {
+    func resetFocusTimer() {
         // 保存未完成的会话
         if let session = currentSession, let startTime = sessionStartTime {
             let actualDuration = Date().timeIntervalSince(startTime)
@@ -72,12 +72,12 @@ class CountdownManager: ObservableObject {
         // 回到 idle 状态，清除所有计时信息
         currentSession = nil
         sessionStartTime = nil
-        state = CountdownState()
+        state = FocusTimerState()
         stopTimer()
     }
 
     /// 暂停倒计时
-    func pauseCountdown() {
+    func pauseFocusTimer() {
         guard state.status == .running else { return }
 
         // 先停止定时器，防止竞态条件
@@ -91,7 +91,7 @@ class CountdownManager: ObservableObject {
         let newEndTime = Date().addingTimeInterval(currentRemaining)
 
         // 记录当前时间点
-        state = CountdownState(
+        state = FocusTimerState(
             endTime: newEndTime,
             lastDuration: state.lastDuration,
             isPaused: true,
@@ -101,7 +101,7 @@ class CountdownManager: ObservableObject {
     }
 
     /// 继续倒计时
-    func resumeCountdown() {
+    func resumeFocusTimer() {
         guard state.status == .paused,
               let oldEndTime = state.endTime,
               let pausedAt = state.pausedAt else { return }
@@ -112,7 +112,7 @@ class CountdownManager: ObservableObject {
         // 新的结束时间 = 原结束时间 + 暂停时长
         let newEndTime = oldEndTime.addingTimeInterval(pauseDuration)
 
-        state = CountdownState(
+        state = FocusTimerState(
             endTime: newEndTime,
             lastDuration: state.lastDuration,
             isPaused: false,
@@ -125,9 +125,9 @@ class CountdownManager: ObservableObject {
     /// 切换暂停/继续状态
     func togglePause() {
         if state.status == .running {
-            pauseCountdown()
+            pauseFocusTimer()
         } else if state.status == .paused {
-            resumeCountdown()
+            resumeFocusTimer()
         }
     }
 
@@ -170,7 +170,7 @@ class CountdownManager: ObservableObject {
 
         // 重新赋值 state 以触发 @Published 更新
         // 必须保留所有字段，否则会丢失状态信息
-        state = CountdownState(
+        state = FocusTimerState(
             endTime: state.endTime,
             lastDuration: state.lastDuration,
             isPaused: state.isPaused,
