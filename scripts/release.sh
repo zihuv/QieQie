@@ -145,7 +145,7 @@ main() {
   ./scripts/prepare-release.sh "$version" >/dev/null
 
   git add -- "${VERSION_FILES[@]}"
-  git commit -m "release: ${version}"
+  git commit -m release: ${version}"
   git tag -a "$tag" -m "$tag"
 
   if [[ "$no_push" == "false" ]]; then
