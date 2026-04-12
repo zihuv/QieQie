@@ -54,7 +54,8 @@ enum FocusDisplayFormatter {
     }()
 
     static func countdown(_ interval: TimeInterval) -> String {
-        let time = max(0, Int(interval.rounded(.down)))
+        // 倒计时展示使用向上取整，保证运行中看到的秒数与暂停后冻结的秒数一致。
+        let time = max(0, Int(interval.rounded(.up)))
         let hours = time / 3600
         let minutes = (time % 3600) / 60
         let seconds = time % 60
