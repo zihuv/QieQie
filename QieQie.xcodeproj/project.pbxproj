@@ -18,7 +18,23 @@
 		E1017 /* FocusStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1016; };
 		E1019 /* FocusHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1018; };
 		E1021 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1020; };
+		E1023 /* FocusTimerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1022; };
+		E1025 /* FocusTimerDurationParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1024; };
+		E1027 /* FocusTimerEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1026; };
+		E1029 /* FocusTimerDurationParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1028; };
+		E1031 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1030; };
+		E1033 /* FocusTimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1032; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E6001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E6000 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E8001;
+			remoteInfo = QieQie;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		E1000 /* QieQieApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QieQieApp.swift; sourceTree = "<group>"; };
@@ -32,8 +48,16 @@
 		E1016 /* FocusStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatistics.swift; sourceTree = "<group>"; };
 		E1018 /* FocusHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryManager.swift; sourceTree = "<group>"; };
 		E1020 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		E1022 /* FocusTimerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerEngine.swift; sourceTree = "<group>"; };
+		E1024 /* FocusTimerDurationParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerDurationParser.swift; sourceTree = "<group>"; };
+		E1026 /* FocusTimerEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerEngineTests.swift; sourceTree = "<group>"; };
+		E1028 /* FocusTimerDurationParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerDurationParserTests.swift; sourceTree = "<group>"; };
+		E1030 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		E1032 /* FocusTimerManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerManagerTests.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E2001 /* QieQie.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QieQie.entitlements; sourceTree = "<group>"; };
 		E9000 /* QieQie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QieQie.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E9003 /* QieQieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QieQieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,6 +68,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E8004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1031 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -51,27 +83,91 @@
 			isa = PBXGroup;
 			children = (
 				E5001 /* QieQie */,
+				E5002 /* QieQieTests */,
+				E5003 /* Frameworks */,
 				E9000 /* QieQie.app */,
+				E9003 /* QieQieTests.xctest */,
 			);
 			sourceTree = "<group>";
 		};
 		E5001 /* QieQie */ = {
 			isa = PBXGroup;
 			children = (
+				E5004 /* App */,
+				E5005 /* Timer */,
+				E5006 /* History */,
+				E5007 /* UI */,
+				E5008 /* Support */,
+			);
+			path = QieQie;
+			sourceTree = "<group>";
+		};
+		E5004 /* App */ = {
+			isa = PBXGroup;
+			children = (
 				E1000,
 				E1002,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E5005 /* Timer */ = {
+			isa = PBXGroup;
+			children = (
 				E1004,
 				E1006,
-				E1008,
-				E1010,
-				E1012,
+				E1022,
+				E1024,
+			);
+			path = Timer;
+			sourceTree = "<group>";
+		};
+		E5006 /* History */ = {
+			isa = PBXGroup;
+			children = (
 				E1014,
 				E1016,
 				E1018,
 				E1020,
-				E2000,
 			);
-			path = QieQie;
+			path = History;
+			sourceTree = "<group>";
+		};
+		E5007 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				E1012,
+				E1010,
+				E1008,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		E5008 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				E2000,
+				E2001,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		E5002 /* QieQieTests */ = {
+			isa = PBXGroup;
+			children = (
+				E1032,
+				E1026,
+				E1028,
+			);
+			path = QieQieTests;
+			sourceTree = "<group>";
+		};
+		E5003 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E1030 /* XCTest.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -93,6 +189,24 @@
 			productName = QieQie;
 			productReference = E9000 /* QieQie.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E8003 /* QieQieTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E9004 /* Build configuration list for PBXNativeTarget "QieQieTests" */;
+			buildPhases = (
+				E7001 /* Sources */,
+				E8004 /* Frameworks */,
+				E8501 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E6002 /* PBXTargetDependency */,
+			);
+			name = QieQieTests;
+			productName = QieQieTests;
+			productReference = E9003 /* QieQieTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -118,12 +232,20 @@
 			projectRoot = "";
 			targets = (
 				E8001 /* QieQie */,
+				E8003 /* QieQieTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		E8500 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E8501 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -148,10 +270,30 @@
 				E1017,
 				E1019,
 				E1021,
+				E1023,
+				E1025,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E7001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1033 /* FocusTimerManagerTests.swift in Sources */,
+				E1027 /* FocusTimerEngineTests.swift in Sources */,
+				E1029 /* FocusTimerDurationParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E6002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E8001 /* QieQie */;
+			targetProxy = E6001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E9100 /* Debug */ = {
@@ -277,7 +419,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = QieQie/QieQie.entitlements;
+				CODE_SIGN_ENTITLEMENTS = QieQie/Support/QieQie.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 0.1.0;
@@ -286,7 +428,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = QieQie/Info.plist;
+				INFOPLIST_FILE = QieQie/Support/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -306,7 +448,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = QieQie/QieQie.entitlements;
+				CODE_SIGN_ENTITLEMENTS = QieQie/Support/QieQie.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 0.1.0;
@@ -315,7 +457,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = QieQie/Info.plist;
+				INFOPLIST_FILE = QieQie/Support/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -330,6 +472,52 @@
 			};
 			name = Release;
 		};
+		E9120 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 0.1.0;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhangzefu.qieqieTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QieQie.app/Contents/MacOS/QieQie";
+				TEST_TARGET_NAME = QieQie;
+			};
+			name = Debug;
+		};
+		E9121 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 0.1.0;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zhangzefu.qieqieTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QieQie.app/Contents/MacOS/QieQie";
+				TEST_TARGET_NAME = QieQie;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -338,6 +526,15 @@
 			buildConfigurations = (
 				E9110 /* Debug */,
 				E9111 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E9004 /* Build configuration list for PBXNativeTarget "QieQieTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E9120 /* Debug */,
+				E9121 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

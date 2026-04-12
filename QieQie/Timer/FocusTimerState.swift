@@ -19,19 +19,27 @@ struct FocusTimerState {
 
     /// 当前状态
     var status: FocusTimerStatus {
-        guard let endTime = endTime else { return .idle }
-        if isPaused { return .paused }
-        return endTime > Date() ? .running : .finished
+        status(at: Date())
     }
 
     /// 剩余时间（秒）
     var remainingTime: TimeInterval? {
+        remainingTime(at: Date())
+    }
+
+    func status(at now: Date) -> FocusTimerStatus {
+        guard let endTime = endTime else { return .idle }
+        if isPaused { return .paused }
+        return endTime > now ? .running : .finished
+    }
+
+    func remainingTime(at now: Date) -> TimeInterval? {
         guard let endTime = endTime else { return nil }
         if isPaused, let pausedAt = pausedAt {
             // 暂停时，endTime已经被调整为整数秒，直接计算即可
             return max(0, endTime.timeIntervalSince(pausedAt))
         }
-        return max(0, endTime.timeIntervalSinceNow)
+        return max(0, endTime.timeIntervalSince(now))
     }
 
     /// 时间输入是否应锁定

@@ -9,7 +9,7 @@ import SwiftUI
 /// 3. 处理菜单点击事件
 /// 4. 显示设置 Popover
 @MainActor
-final class StatusBarManager {
+final class StatusBarManager: NSObject, NSPopoverDelegate {
     private let finishedTitle = "Done"
     // NSStatusBarButton 自带左右留白，这里只补少量余量避免文字贴边。
     private let titlePadding: CGFloat = 0
@@ -33,6 +33,7 @@ final class StatusBarManager {
 
     init(focusTimerManager: FocusTimerManager) {
         self.focusTimerManager = focusTimerManager
+        super.init()
         setupStatusBar()
         observeStateChanges()
     }
@@ -55,6 +56,7 @@ final class StatusBarManager {
             button.action = #selector(statusBarButtonClicked)
             button.target = self
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+            button.setAccessibilityIdentifier(FocusTimerAccessibilityID.StatusBar.button)
         }
 
         updateTitle()
@@ -69,7 +71,7 @@ final class StatusBarManager {
             showMenu()
         } else {
             // 左键点击显示 Popover
-            showSettings()
+            toggleSettingsPopover()
         }
     }
 
@@ -199,54 +201,77 @@ final class StatusBarManager {
     }
 
     private func restorePopoverFocusIfNeeded(for state: FocusTimerState) {
-        guard state.status != .running,
-              let popover,
-              popover.isShown else { return }
+        guard state.status != .running, isSettingsPopoverShown else { return }
 
-        DispatchQueue.main.async {
-            NSApp.activate(ignoringOtherApps: true)
-            popover.contentViewController?.view.window?.makeKey()
-        }
+        focusSettingsPopoverIfNeeded()
     }
 
     // MARK: - 菜单操作
 
-    /// 显示设置 Popover
-    @objc private func showSettings() {
-        // 如果 Popover 已经显示，关闭它
-        if let popover = popover, popover.isShown {
-            popover.performClose(nil)
-            self.popover = nil
+    var isSettingsPopoverShown: Bool {
+        popover?.isShown == true
+    }
+
+    func toggleSettingsPopover() {
+        if isSettingsPopoverShown {
+            hideSettingsPopover()
+        } else {
+            showSettingsPopover()
+        }
+    }
+
+    func showSettingsPopover() {
+        guard let button = statusItem?.button else { return }
+
+        let popover = self.popover ?? makeSettingsPopover()
+        if popover.isShown {
+            focusSettingsPopoverIfNeeded()
             return
         }
 
-        // 创建新的 Popover
+        popover.show(
+            relativeTo: button.bounds,
+            of: button,
+            preferredEdge: .minY
+        )
+
+        self.popover = popover
+        focusSettingsPopoverIfNeeded()
+    }
+
+    func hideSettingsPopover() {
+        guard let popover else { return }
+        popover.performClose(nil)
+        self.popover = nil
+    }
+
+    func focusSettingsPopoverIfNeeded() {
+        guard let popover, popover.isShown else { return }
+
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.setAccessibilityIdentifier(FocusTimerAccessibilityID.StatusBar.popover)
+            popover.contentViewController?.view.window?.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    private func makeSettingsPopover() -> NSPopover {
         let newPopover = NSPopover()
         newPopover.contentSize = NSSize(width: 320, height: 400)
         newPopover.behavior = .transient
+        newPopover.delegate = self
         newPopover.contentViewController = NSHostingController(
             rootView: SettingsPopover(focusTimerManager: focusTimerManager)
         )
-
-        // 显示 Popover
-        if let button = statusItem?.button {
-            newPopover.show(
-                relativeTo: button.bounds,
-                of: button,
-                preferredEdge: .minY
-            )
-
-            DispatchQueue.main.async {
-                NSApp.activate(ignoringOtherApps: true)
-                newPopover.contentViewController?.view.window?.makeKey()
-            }
-        }
-
-        popover = newPopover
+        return newPopover
     }
 
     /// 退出应用
     @objc private func quit() {
         NSApplication.shared.terminate(nil)
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        popover = nil
     }
 }

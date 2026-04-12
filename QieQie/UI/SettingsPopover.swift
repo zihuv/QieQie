@@ -1,5 +1,23 @@
 import SwiftUI
 
+enum FocusTimerAccessibilityID {
+    enum SettingsPopover {
+        static let root = "settingsPopover.root"
+        static let taskNameField = "settingsPopover.taskNameField"
+        static let minutesField = "settingsPopover.minutesField"
+        static let secondsField = "settingsPopover.secondsField"
+        static let historyButton = "settingsPopover.historyButton"
+        static let mainButton = "settingsPopover.mainButton"
+        static let resetButton = "settingsPopover.resetButton"
+        static let validationError = "settingsPopover.validationError"
+    }
+
+    enum StatusBar {
+        static let button = "statusBar.button"
+        static let popover = "statusBar.popover"
+    }
+}
+
 /// 设置弹窗视图
 struct SettingsPopover: View {
     private enum InputField: Hashable {
@@ -58,6 +76,7 @@ struct SettingsPopover: View {
         }
         .padding(20)
         .frame(width: 280, height: 300)
+        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.root)
         .onAppear {
             syncFromState()
             refreshStatistics()
@@ -91,6 +110,7 @@ struct SettingsPopover: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(6)
                 .focused($focusedField, equals: .taskName)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
         }
     }
 
@@ -109,6 +129,7 @@ struct SettingsPopover: View {
                     .cornerRadius(6)
                     .disabled(isTimeInputLocked)
                     .focused($focusedField, equals: .minutes)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.minutesField)
                     .onChange(of: minutes) { _, newValue in
                         minutes = sanitizeNumericInput(newValue, maxLength: 3)
                     }
@@ -128,6 +149,7 @@ struct SettingsPopover: View {
                     .cornerRadius(6)
                     .disabled(isTimeInputLocked)
                     .focused($focusedField, equals: .seconds)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.secondsField)
                     .onChange(of: seconds) { _, newValue in
                         seconds = sanitizeNumericInput(newValue, maxLength: 2, upperBound: 59)
                     }
@@ -139,6 +161,7 @@ struct SettingsPopover: View {
                 Text("请输入有效时间")
                     .font(.caption2)
                     .foregroundColor(.red)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.validationError)
             }
         }
         .padding(.vertical, 8)
@@ -180,6 +203,7 @@ struct SettingsPopover: View {
             .buttonStyle(.plain)
             .foregroundColor(.accentColor)
             .disabled(focusTimerManager.focusHistoryManager == nil)
+            .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.historyButton)
         }
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
@@ -199,6 +223,7 @@ struct SettingsPopover: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.mainButton)
 
             // Reset 按钮
             Button(action: resetFocusTimer) {
@@ -208,6 +233,7 @@ struct SettingsPopover: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
             .disabled(!focusTimerManager.state.canReset)
+            .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.resetButton)
         }
     }
 
@@ -332,26 +358,11 @@ struct SettingsPopover: View {
     }
 
     private func sanitizeNumericInput(_ value: String, maxLength: Int, upperBound: Int? = nil) -> String {
-        var sanitized = String(value.filter(\.isNumber).prefix(maxLength))
-
-        if let upperBound, let number = Int(sanitized), number > upperBound {
-            sanitized = String(upperBound)
-        }
-
-        return sanitized
+        FocusTimerDurationParser.sanitizeNumericInput(value, maxLength: maxLength, upperBound: upperBound)
     }
 
     private func validatedDuration() -> TimeInterval? {
-        guard let min = Int(minutes),
-              let sec = Int(seconds),
-              min >= 0,
-              sec >= 0,
-              sec < 60,
-              min * 60 + sec > 0 else {
-            return nil
-        }
-
-        return TimeInterval(min * 60 + sec)
+        FocusTimerDurationParser.parse(minutes: minutes, seconds: seconds)
     }
 
     private func restoreInputFocusIfNeeded(from oldStatus: FocusTimerStatus, to newStatus: FocusTimerStatus) {
