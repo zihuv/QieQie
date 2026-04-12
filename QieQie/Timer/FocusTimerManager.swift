@@ -105,7 +105,7 @@ final class FocusTimerManager: ObservableObject {
         accumulatedPausedDuration = 0
         currentSession = focusHistoryManager?.createSession(taskName: effectiveTaskName, startTime: now)
 
-        state = engine.start(duration: duration, taskName: effectiveTaskName, now: now)
+        publishState(engine.start(duration: duration, taskName: effectiveTaskName, now: now))
 
         // 启动定时器
         startTimer()
@@ -118,7 +118,7 @@ final class FocusTimerManager: ObservableObject {
 
         // 回到 idle 状态，清除所有计时信息
         stopTimer()
-        state = engine.reset(state)
+        publishState(engine.reset(state))
     }
 
     /// 暂停倒计时
@@ -126,14 +126,14 @@ final class FocusTimerManager: ObservableObject {
         // 先停止定时器，防止竞态条件
         stopTimer()
         guard let pausedState = engine.pause(state, now: clock.now()) else { return }
-        state = pausedState
+        publishState(pausedState)
     }
 
     /// 继续倒计时
     func resumeFocusTimer() {
         guard let resumeResult = engine.resume(state, now: clock.now()) else { return }
         accumulatedPausedDuration += resumeResult.pauseDuration
-        state = resumeResult.state
+        publishState(resumeResult.state)
         startTimer()
     }
 
@@ -150,7 +150,7 @@ final class FocusTimerManager: ObservableObject {
     /// 在暂停状态下更新剩余时间，供用户调整后继续计时
     func updatePausedRemainingTime(duration: TimeInterval) {
         guard let updatedState = engine.updatePausedRemainingTime(state, duration: duration) else { return }
-        state = updatedState
+        publishState(updatedState)
     }
 
     /// 处理一次定时 tick，供测试或 focused harness 显式驱动状态刷新。
@@ -189,7 +189,7 @@ final class FocusTimerManager: ObservableObject {
             stopTimer()
         }
 
-        state = state.refreshed()
+        publishState(state.refreshed())
     }
 
     private func finalizeCurrentSession(isCompleted: Bool, endedAt: Date) {
@@ -223,5 +223,13 @@ final class FocusTimerManager: ObservableObject {
     private func normalizedTaskName(_ taskName: String) -> String {
         let trimmed = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "专注时间" : trimmed
+    }
+
+    private func publishState(_ newState: FocusTimerState) {
+        state = newState
+        // `@Published` emits before the stored value changes. Send a second invalidation
+        // after mutation so SwiftUI views that read `focusTimerManager.state` re-render
+        // against the updated value immediately instead of waiting for the next tick.
+        objectWillChange.send()
     }
 }

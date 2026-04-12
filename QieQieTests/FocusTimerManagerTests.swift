@@ -17,6 +17,22 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(scheduler.lastInterval, 1)
     }
 
+    func testStartPublishesUpdatedRunningStateToObjectWillChangeObservers() {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let manager = FocusTimerManager(clock: clock, tickerScheduler: scheduler)
+        var observedStatuses: [FocusTimerStatus] = []
+
+        let cancellable = manager.objectWillChange.sink {
+            observedStatuses.append(manager.state.status(at: clock.now()))
+        }
+
+        manager.startFocusTimer(duration: 30, taskName: "Write")
+
+        XCTAssertEqual(observedStatuses, [.idle, .running])
+        withExtendedLifetime(cancellable) {}
+    }
+
     func testProcessTimerTickUsesInjectedClockToFinishTimer() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
