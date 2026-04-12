@@ -10,6 +10,12 @@ import SwiftUI
 /// 4. 显示设置 Popover
 @MainActor
 final class StatusBarManager {
+    private let finishedTitle = "Done"
+    private let titlePadding: CGFloat = 12
+    private let titleAttributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
+    ]
+
     /// 状态栏项
     private var statusItem: NSStatusItem?
 
@@ -74,7 +80,7 @@ final class StatusBarManager {
 
         // Quit 菜单项
         let quitItem = NSMenuItem(
-            title: "退出 QieQie",
+            title: "退出",
             action: #selector(quit),
             keyEquivalent: "q"
         )
@@ -90,8 +96,10 @@ final class StatusBarManager {
     /// 订阅状态变化
     private func observeStateChanges() {
         focusTimerManager.$state
-            .sink { [weak self] _ in
-                self?.updateTitle()
+            // `@Published` emits from `willSet`, so using the emitted state avoids
+            // reading a stale pre-update value from `focusTimerManager.state`.
+            .sink { [weak self] state in
+                self?.updateTitle(for: state)
             }
             .store(in: &cancellables)
     }
@@ -99,20 +107,93 @@ final class StatusBarManager {
     // MARK: - 更新菜单栏标题
 
     /// 更新菜单栏标题
-    private func updateTitle() {
-        guard let button = statusItem?.button else { return }
+    private func updateTitle(for state: FocusTimerState? = nil) {
+        guard let statusItem, let button = statusItem.button else { return }
+        let state = state ?? focusTimerManager.state
 
-        switch focusTimerManager.state.status {
+        switch state.status {
         case .idle:
-            button.image = NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle")
-            button.title = ""
+            applyIcon(
+                NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle"),
+                to: button,
+                statusItem: statusItem
+            )
         case .running, .paused:
-            button.image = nil
-            button.title = FocusDisplayFormatter.countdown(focusTimerManager.state.remainingTime ?? 0)
+            applyFixedWidthTitle(
+                FocusDisplayFormatter.countdown(state.remainingTime ?? 0),
+                to: button,
+                statusItem: statusItem,
+                state: state
+            )
         case .finished:
-            button.image = nil
-            button.title = "Done"
+            applyFixedWidthTitle(
+                finishedTitle,
+                to: button,
+                statusItem: statusItem,
+                state: state
+            )
         }
+    }
+
+    private func applyIcon(
+        _ image: NSImage?,
+        to button: NSStatusBarButton,
+        statusItem: NSStatusItem
+    ) {
+        clearButtonTitle(on: button)
+        button.image = image
+        button.imagePosition = .imageOnly
+        statusItem.length = NSStatusItem.variableLength
+    }
+
+    private func applyFixedWidthTitle(
+        _ title: String,
+        to button: NSStatusBarButton,
+        statusItem: NSStatusItem,
+        state: FocusTimerState
+    ) {
+        button.image = nil
+        button.imagePosition = .noImage
+        setButtonTitle(title, on: button)
+        statusItem.length = reservedTitleWidth(for: state)
+    }
+
+    private func setButtonTitle(_ title: String, on button: NSStatusBarButton) {
+        button.title = title
+        button.attributedTitle = NSAttributedString(
+            string: title,
+            attributes: titleAttributes
+        )
+    }
+
+    private func clearButtonTitle(on button: NSStatusBarButton) {
+        button.title = ""
+        button.attributedTitle = NSAttributedString(string: "")
+    }
+
+    private func reservedTitleWidth(for state: FocusTimerState) -> CGFloat {
+        let widestTitle = [finishedTitle, countdownReferenceTitle(for: state)]
+            .map(measuredWidth(for:))
+            .max() ?? 0
+        return widestTitle + titlePadding
+    }
+
+    // 用本次倒计时的初始展示文本作为宽度基准，避免剩余时间跨位数时抖动。
+    private func countdownReferenceTitle(for state: FocusTimerState) -> String {
+        guard let lastDuration = state.lastDuration else {
+            return "00:00"
+        }
+
+        return FocusDisplayFormatter.countdown(lastDuration)
+    }
+
+    private func measuredWidth(for title: String) -> CGFloat {
+        ceil(
+            NSAttributedString(
+                string: title,
+                attributes: titleAttributes
+            ).size().width
+        )
     }
 
     // MARK: - 菜单操作
