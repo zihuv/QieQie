@@ -140,7 +140,7 @@ struct FocusTimerEngine {
                     phase: nextPhase,
                     cycleFocusCount: nextFocusCount,
                     configuration: state.configuration,
-                    shouldAutoStart: state.configuration.autoAdvance,
+                    shouldAutoStart: state.configuration.shouldAutoStartNextPhase(after: .focus),
                     now: now
                 ),
                 completedFocusDuration: trigger == .completed ? state.phaseDuration : nil
@@ -151,7 +151,7 @@ struct FocusTimerEngine {
                     phase: .focus,
                     cycleFocusCount: state.cycleFocusCount,
                     configuration: state.configuration,
-                    shouldAutoStart: state.configuration.autoAdvance,
+                    shouldAutoStart: state.configuration.shouldAutoStartNextPhase(after: .shortBreak),
                     now: now
                 ),
                 completedFocusDuration: nil
@@ -162,7 +162,7 @@ struct FocusTimerEngine {
                     phase: .focus,
                     cycleFocusCount: 0,
                     configuration: state.configuration,
-                    shouldAutoStart: state.configuration.autoAdvance,
+                    shouldAutoStart: state.configuration.shouldAutoStartNextPhase(after: .longBreak),
                     now: now
                 ),
                 completedFocusDuration: nil

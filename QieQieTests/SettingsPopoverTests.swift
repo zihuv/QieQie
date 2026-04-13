@@ -55,7 +55,8 @@ final class SettingsPopoverTests: XCTestCase {
                 shortBreakDuration: 7 * 60,
                 longBreakDuration: 20 * 60,
                 longBreakInterval: 3,
-                autoAdvance: false
+                autoStartBreak: false,
+                autoStartNextFocus: true
             )
         )
         pumpMainRunLoop()
@@ -69,6 +70,8 @@ final class SettingsPopoverTests: XCTestCase {
         let renderedImage = try XCTUnwrap(renderImage(from: host.view))
         let recognizedText = try recognizedText(in: renderedImage)
         XCTAssertTrue(recognizedText.contains("返回"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("自动开始下个番茄"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("自动休息"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
@@ -104,11 +107,11 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertTrue(StatusBarManager.countdownColor(for: .longBreak).isEqual(NSColor.systemGreen))
     }
 
-    func testPopoverLayoutUsesCompactSizes() {
+    func testPopoverLayoutUsesDedicatedPanelSizes() {
         XCTAssertEqual(SettingsPopoverLayout.mainSize.width, 236)
         XCTAssertEqual(SettingsPopoverLayout.mainSize.height, 180)
-        XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, 244)
-        XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, 258)
+        XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, 344)
+        XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, 408)
         XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, 480)
         XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, 420)
         XCTAssertEqual(StatisticsWindowLayout.minSize.width, 440)

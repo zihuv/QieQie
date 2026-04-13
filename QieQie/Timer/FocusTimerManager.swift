@@ -59,6 +59,8 @@ final class FocusTimerManager: ObservableObject {
         static let shortBreakDuration = "focusTimer.configuration.shortBreakDuration"
         static let longBreakDuration = "focusTimer.configuration.longBreakDuration"
         static let longBreakInterval = "focusTimer.configuration.longBreakInterval"
+        static let autoStartBreak = "focusTimer.configuration.autoStartBreak"
+        static let autoStartNextFocus = "focusTimer.configuration.autoStartNextFocus"
         static let autoAdvance = "focusTimer.configuration.autoAdvance"
     }
 
@@ -195,7 +197,9 @@ final class FocusTimerManager: ObservableObject {
         userDefaults.set(configuration.shortBreakDuration, forKey: StorageKey.shortBreakDuration)
         userDefaults.set(configuration.longBreakDuration, forKey: StorageKey.longBreakDuration)
         userDefaults.set(configuration.longBreakInterval, forKey: StorageKey.longBreakInterval)
-        userDefaults.set(configuration.autoAdvance, forKey: StorageKey.autoAdvance)
+        userDefaults.set(configuration.autoStartBreak, forKey: StorageKey.autoStartBreak)
+        userDefaults.set(configuration.autoStartNextFocus, forKey: StorageKey.autoStartNextFocus)
+        userDefaults.removeObject(forKey: StorageKey.autoAdvance)
     }
 
     private static func loadConfiguration(from userDefaults: UserDefaults) -> FocusTimerConfiguration {
@@ -204,14 +208,21 @@ final class FocusTimerManager: ObservableObject {
         let shortBreakDuration = userDefaults.object(forKey: StorageKey.shortBreakDuration) as? Double ?? defaults.shortBreakDuration
         let longBreakDuration = userDefaults.object(forKey: StorageKey.longBreakDuration) as? Double ?? defaults.longBreakDuration
         let longBreakInterval = userDefaults.object(forKey: StorageKey.longBreakInterval) as? Int ?? defaults.longBreakInterval
-        let autoAdvance = userDefaults.object(forKey: StorageKey.autoAdvance) as? Bool ?? defaults.autoAdvance
+        let legacyAutoAdvance = userDefaults.object(forKey: StorageKey.autoAdvance) as? Bool
+        let autoStartBreak = userDefaults.object(forKey: StorageKey.autoStartBreak) as? Bool
+            ?? legacyAutoAdvance
+            ?? defaults.autoStartBreak
+        let autoStartNextFocus = userDefaults.object(forKey: StorageKey.autoStartNextFocus) as? Bool
+            ?? legacyAutoAdvance
+            ?? defaults.autoStartNextFocus
 
         return FocusTimerConfiguration(
             focusDuration: focusDuration,
             shortBreakDuration: shortBreakDuration,
             longBreakDuration: longBreakDuration,
             longBreakInterval: longBreakInterval,
-            autoAdvance: autoAdvance
+            autoStartBreak: autoStartBreak,
+            autoStartNextFocus: autoStartNextFocus
         ).normalized()
     }
 }

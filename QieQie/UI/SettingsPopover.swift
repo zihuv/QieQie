@@ -9,7 +9,7 @@ enum SettingsPopoverLayout {
     static let mainWidth: CGFloat = 236
     static let mainEstimatedHeight: CGFloat = 180
     static let mainSize = CGSize(width: mainWidth, height: mainEstimatedHeight)
-    static let settingsSize = CGSize(width: 244, height: 258)
+    static let settingsSize = CGSize(width: 344, height: 408)
 
     static func fittedMainSize(for measuredSize: CGSize) -> CGSize {
         CGSize(
@@ -34,7 +34,8 @@ enum FocusTimerAccessibilityID {
         static let shortBreakMinutesField = "settingsPopover.shortBreakMinutesField"
         static let longBreakMinutesField = "settingsPopover.longBreakMinutesField"
         static let intervalField = "settingsPopover.intervalField"
-        static let autoAdvanceToggle = "settingsPopover.autoAdvanceToggle"
+        static let autoStartNextFocusToggle = "settingsPopover.autoStartNextFocusToggle"
+        static let autoStartBreakToggle = "settingsPopover.autoStartBreakToggle"
     }
 
     enum StatusBar {
@@ -56,7 +57,8 @@ struct SettingsPopover: View {
     @State private var shortBreakMinutes = "5"
     @State private var longBreakMinutes = "15"
     @State private var longBreakInterval = "4"
-    @State private var autoAdvance = true
+    @State private var autoStartBreak = true
+    @State private var autoStartNextFocus = true
     @State private var dashboardStats = FocusStatistics()
     @State private var mainContentSize = SettingsPopoverLayout.mainSize
     private let onPreferredSizeChange: ((CGSize) -> Void)?
@@ -133,65 +135,88 @@ struct SettingsPopover: View {
     }
 
     private var settingsContent: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             headerRow(title: "设置", showsBack: true)
-            VStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 10) {
-                    settingsRow(
-                        title: "专注时长",
-                        value: $focusMinutes,
-                        suffix: "分钟",
-                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.focusMinutesField
-                    ) { updateFocusDuration() }
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    settingsSection(title: "计时选项") {
+                        VStack(spacing: 0) {
+                            settingsInputRow(
+                                title: "番茄时长",
+                                value: $focusMinutes,
+                                suffix: "分钟",
+                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.focusMinutesField
+                            ) { updateFocusDuration() }
 
-                    settingsRow(
-                        title: "短休息",
-                        value: $shortBreakMinutes,
-                        suffix: "分钟",
-                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.shortBreakMinutesField
-                    ) { updateShortBreakDuration() }
+                            settingsDivider
 
-                    settingsRow(
-                        title: "长休息",
-                        value: $longBreakMinutes,
-                        suffix: "分钟",
-                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.longBreakMinutesField
-                    ) { updateLongBreakDuration() }
+                            settingsInputRow(
+                                title: "短休息时长",
+                                value: $shortBreakMinutes,
+                                suffix: "分钟",
+                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.shortBreakMinutesField
+                            ) { updateShortBreakDuration() }
 
-                    settingsRow(
-                        title: "长休息间隔",
-                        value: $longBreakInterval,
-                        suffix: "次专注",
-                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.intervalField,
-                        maxLength: 2,
-                        upperBound: 10
-                    ) { updateLongBreakInterval() }
-                }
-                .padding(10)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-                .cornerRadius(12)
+                            settingsDivider
 
-                Toggle("自动进入下一阶段", isOn: $autoAdvance)
-                    .toggleStyle(.switch)
-                    .font(.system(size: 13))
-                    .padding(10)
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-                    .cornerRadius(12)
-                    .onChange(of: autoAdvance) { _, newValue in
-                        var configuration = focusTimerManager.configuration
-                        configuration.autoAdvance = newValue
-                        focusTimerManager.updateConfiguration(configuration)
+                            settingsInputRow(
+                                title: "长休息时长",
+                                value: $longBreakMinutes,
+                                suffix: "分钟",
+                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.longBreakMinutesField
+                            ) { updateLongBreakDuration() }
+
+                            settingsDivider
+
+                            settingsInputRow(
+                                title: "长休息间隔番茄数",
+                                value: $longBreakInterval,
+                                suffix: "个",
+                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.intervalField,
+                                maxLength: 2,
+                                upperBound: 10
+                            ) { updateLongBreakInterval() }
+                        }
                     }
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.autoAdvanceToggle)
+
+                    settingsSection(title: "自动选项") {
+                        VStack(spacing: 0) {
+                            settingsToggleRow(
+                                title: "自动开始下个番茄",
+                                isOn: $autoStartNextFocus,
+                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.autoStartNextFocusToggle
+                            )
+
+                            settingsDivider
+
+                            settingsToggleRow(
+                                title: "自动休息",
+                                isOn: $autoStartBreak,
+                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.autoStartBreakToggle
+                            )
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(.bottom, 4)
             }
-            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .padding(10)
+        .padding(14)
         .frame(
             width: SettingsPopoverLayout.settingsSize.width,
             height: SettingsPopoverLayout.settingsSize.height,
             alignment: .top
         )
+        .onChange(of: autoStartBreak) { _, newValue in
+            var configuration = focusTimerManager.configuration
+            configuration.autoStartBreak = newValue
+            focusTimerManager.updateConfiguration(configuration)
+        }
+        .onChange(of: autoStartNextFocus) { _, newValue in
+            var configuration = focusTimerManager.configuration
+            configuration.autoStartNextFocus = newValue
+            focusTimerManager.updateConfiguration(configuration)
+        }
     }
 
     private func headerRow(title: String, showsBack: Bool) -> some View {
@@ -323,7 +348,40 @@ struct SettingsPopover: View {
         }
     }
 
-    private func settingsRow(
+    private func settingsSection<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            settingsCard {
+                content()
+            }
+        }
+    }
+
+    private func settingsCard<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .background(Color(nsColor: NSColor.controlBackgroundColor).opacity(0.55))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.22), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var settingsDivider: some View {
+        Divider()
+            .padding(.leading, 14)
+    }
+
+    private func settingsInputRow(
         title: String,
         value: Binding<String>,
         suffix: String,
@@ -332,13 +390,13 @@ struct SettingsPopover: View {
         upperBound: Int? = nil,
         onCommit: @escaping () -> Void
     ) -> some View {
-        HStack {
+        HStack(spacing: 12) {
             Text(title)
-                .font(.system(size: 13))
-            Spacer()
+                .font(.system(size: 14, weight: .medium))
+            Spacer(minLength: 12)
             TextField("", text: value)
                 .textFieldStyle(.roundedBorder)
-                .frame(width: 46)
+                .frame(width: 88)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier(accessibilityID)
                 .onChange(of: value.wrappedValue) { _, newValue in
@@ -350,9 +408,29 @@ struct SettingsPopover: View {
                     onCommit()
                 }
             Text(suffix)
-                .font(.caption2)
+                .font(.system(size: 13))
                 .foregroundColor(.secondary)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    private func settingsToggleRow(
+        title: String,
+        isOn: Binding<Bool>,
+        accessibilityID: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.system(size: 14, weight: .medium))
+            Spacer(minLength: 12)
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .accessibilityIdentifier(accessibilityID)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
     }
 
     private func syncConfigurationFields() {
@@ -361,7 +439,8 @@ struct SettingsPopover: View {
         shortBreakMinutes = minutesString(from: configuration.shortBreakDuration)
         longBreakMinutes = minutesString(from: configuration.longBreakDuration)
         longBreakInterval = String(configuration.longBreakInterval)
-        autoAdvance = configuration.autoAdvance
+        autoStartBreak = configuration.autoStartBreak
+        autoStartNextFocus = configuration.autoStartNextFocus
         refreshStatistics()
     }
 

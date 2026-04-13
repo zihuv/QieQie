@@ -50,9 +50,26 @@ struct FocusTimerConfiguration: Equatable {
     var shortBreakDuration: TimeInterval = 5 * 60
     var longBreakDuration: TimeInterval = 15 * 60
     var longBreakInterval: Int = 4
-    var autoAdvance: Bool = true
+    var autoStartBreak: Bool = true
+    var autoStartNextFocus: Bool = true
 
     static let `default` = FocusTimerConfiguration()
+
+    init(
+        focusDuration: TimeInterval = 25 * 60,
+        shortBreakDuration: TimeInterval = 5 * 60,
+        longBreakDuration: TimeInterval = 15 * 60,
+        longBreakInterval: Int = 4,
+        autoStartBreak: Bool = true,
+        autoStartNextFocus: Bool = true
+    ) {
+        self.focusDuration = focusDuration
+        self.shortBreakDuration = shortBreakDuration
+        self.longBreakDuration = longBreakDuration
+        self.longBreakInterval = longBreakInterval
+        self.autoStartBreak = autoStartBreak
+        self.autoStartNextFocus = autoStartNextFocus
+    }
 
     func normalized() -> FocusTimerConfiguration {
         FocusTimerConfiguration(
@@ -66,7 +83,8 @@ struct FocusTimerConfiguration: Equatable {
                 fallback: Self.default.longBreakDuration
             ),
             longBreakInterval: min(max(longBreakInterval, 1), 10),
-            autoAdvance: autoAdvance
+            autoStartBreak: autoStartBreak,
+            autoStartNextFocus: autoStartNextFocus
         )
     }
 
@@ -78,6 +96,15 @@ struct FocusTimerConfiguration: Equatable {
             return shortBreakDuration
         case .longBreak:
             return longBreakDuration
+        }
+    }
+
+    func shouldAutoStartNextPhase(after phase: FocusTimerPhase) -> Bool {
+        switch phase {
+        case .focus:
+            return autoStartBreak
+        case .shortBreak, .longBreak:
+            return autoStartNextFocus
         }
     }
 

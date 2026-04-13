@@ -66,6 +66,26 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(recordedDurations, [TimeInterval(25 * 60)])
     }
 
+    func testProcessTimerTickLeavesBreakIdleWhenAutoBreakIsDisabled() {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let defaults = makeUserDefaults()
+        defaults.set(false, forKey: "focusTimer.configuration.autoStartBreak")
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: defaults
+        )
+
+        manager.startCurrentPhase()
+        clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
+        manager.processTimerTick()
+
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .idle)
+        XCTAssertNil(manager.state.endTime)
+    }
+
     func testSkipCurrentFocusAdvancesWithoutWaitingForTimerBoundary() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
@@ -117,6 +137,17 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(manager.state.endTime, Date(timeIntervalSinceReferenceDate: 1605))
         XCTAssertEqual(scheduler.scheduleCallCount, 2)
     }
+
+    func testLegacyAutoAdvanceMigratesToBothAutoStartSettings() {
+        let defaults = makeUserDefaults()
+        defaults.set(false, forKey: "focusTimer.configuration.autoAdvance")
+
+        let manager = FocusTimerManager(userDefaults: defaults)
+
+        XCTAssertFalse(manager.configuration.autoStartBreak)
+        XCTAssertFalse(manager.configuration.autoStartNextFocus)
+    }
+
     private func makeUserDefaults() -> UserDefaults {
         let suiteName = UUID().uuidString
         let defaults = UserDefaults(suiteName: suiteName)!
