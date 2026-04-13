@@ -138,6 +138,7 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
         statusItem: NSStatusItem
     ) {
         clearButtonTitle(on: button)
+        button.contentTintColor = nil
         button.image = image
         button.imagePosition = .imageOnly
         statusItem.length = NSStatusItem.variableLength
@@ -159,13 +160,15 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
         button.title = title
         button.attributedTitle = NSAttributedString(
             string: title,
-            attributes: titleAttributes(for: state)
+            attributes: [.font: titleFont]
         )
+        button.contentTintColor = Self.countdownTintColor(for: state.currentPhase)
     }
 
     private func clearButtonTitle(on button: NSStatusBarButton) {
         button.title = ""
         button.attributedTitle = NSAttributedString(string: "")
+        button.contentTintColor = nil
     }
 
     private func reservedTitleWidth(for state: FocusTimerState) -> CGFloat {
@@ -187,17 +190,10 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
         )
     }
 
-    private func titleAttributes(for state: FocusTimerState) -> [NSAttributedString.Key: Any] {
-        [
-            .font: titleFont,
-            .foregroundColor: Self.countdownColor(for: state.currentPhase)
-        ]
-    }
-
-    static func countdownColor(for phase: FocusTimerPhase) -> NSColor {
+    static func countdownTintColor(for phase: FocusTimerPhase) -> NSColor? {
         switch phase {
         case .focus:
-            return .labelColor
+            return nil
         case .shortBreak, .longBreak:
             return .systemGreen
         }

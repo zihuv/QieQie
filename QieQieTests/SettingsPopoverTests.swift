@@ -123,10 +123,32 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    func testBreakCountdownUsesGreenStatusBarColor() {
-        XCTAssertTrue(StatusBarManager.countdownColor(for: .focus).isEqual(NSColor.labelColor))
-        XCTAssertTrue(StatusBarManager.countdownColor(for: .shortBreak).isEqual(NSColor.systemGreen))
-        XCTAssertTrue(StatusBarManager.countdownColor(for: .longBreak).isEqual(NSColor.systemGreen))
+    func testBreakCountdownUsesGreenStatusBarTint() {
+        XCTAssertNil(StatusBarManager.countdownTintColor(for: .focus))
+        XCTAssertTrue(StatusBarManager.countdownTintColor(for: .shortBreak)?.isEqual(NSColor.systemGreen) == true)
+        XCTAssertTrue(StatusBarManager.countdownTintColor(for: .longBreak)?.isEqual(NSColor.systemGreen) == true)
+    }
+
+    func testStatusBarCountdownDoesNotPinForegroundColor() throws {
+        let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let statusBarManager = StatusBarManager(focusTimerManager: manager)
+        let pausedAt = Date()
+
+        manager.state = FocusTimerState(
+            configuration: .default,
+            currentPhase: .focus,
+            cycleFocusCount: 0,
+            phaseDuration: 25 * 60,
+            endTime: pausedAt.addingTimeInterval(25 * 60),
+            isPaused: true,
+            pausedAt: pausedAt
+        )
+        pumpMainRunLoop()
+
+        let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
+        XCTAssertEqual(button.title, "25:00")
+        XCTAssertNil(button.contentTintColor)
+        XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
     func testPopoverLayoutUsesDedicatedPanelSizes() {
@@ -253,6 +275,12 @@ final class SettingsPopoverTests: XCTestCase {
 
     private func pumpMainRunLoop() {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+    }
+
+    private func statusBarButton(from statusBarManager: StatusBarManager) -> NSStatusBarButton? {
+        let mirror = Mirror(reflecting: statusBarManager)
+        let statusItem = mirror.children.first { $0.label == "statusItem" }?.value as? NSStatusItem
+        return statusItem?.button
     }
 
     private func findTextFields(in view: NSView) -> [NSTextField] {
