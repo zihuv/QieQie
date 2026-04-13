@@ -9,17 +9,23 @@ struct FocusHistorySnapshot {
 
 @MainActor
 final class FocusHistoryManager: ObservableObject {
+    private let modelContainer: ModelContainer
     private let modelContext: ModelContext
 
     private let logger = Logger(subsystem: "com.zhangzefu.qieqie", category: "FocusHistory")
 
     init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
         self.modelContext = modelContainer.mainContext
     }
 
-    func recordCompletedFocus(duration: TimeInterval, completedAt: Date = Date()) {
+    func recordCompletedFocus(
+        duration: TimeInterval,
+        taskName: String = "专注",
+        completedAt: Date = Date()
+    ) {
         let session = FocusSession(
-            taskName: "专注",
+            taskName: normalizedTaskName(taskName),
             startTime: completedAt,
             endTime: completedAt,
             duration: duration,
@@ -70,5 +76,10 @@ final class FocusHistoryManager: ObservableObject {
             logger.error("Failed to fetch sessions: \(error.localizedDescription, privacy: .public)")
             return []
         }
+    }
+
+    private func normalizedTaskName(_ taskName: String) -> String {
+        let trimmed = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "专注" : trimmed
     }
 }

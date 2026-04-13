@@ -120,19 +120,11 @@ struct FocusTimerEngine {
     ) -> FocusTimerAdvanceResult {
         switch state.currentPhase {
         case .focus:
-            let nextFocusCount: Int
-            let nextPhase: FocusTimerPhase
-
-            if trigger == .completed {
-                nextFocusCount = min(state.cycleFocusCount + 1, state.configuration.longBreakInterval)
-                if nextFocusCount >= state.configuration.longBreakInterval {
-                    nextPhase = .longBreak
-                } else {
-                    nextPhase = .shortBreak
-                }
+            let nextFocusCount = min(state.cycleFocusCount + 1, state.configuration.longBreakInterval)
+            let nextPhase: FocusTimerPhase = if nextFocusCount >= state.configuration.longBreakInterval {
+                .longBreak
             } else {
-                nextFocusCount = state.cycleFocusCount
-                nextPhase = .shortBreak
+                .shortBreak
             }
 
             return FocusTimerAdvanceResult(
@@ -140,7 +132,11 @@ struct FocusTimerEngine {
                     phase: nextPhase,
                     cycleFocusCount: nextFocusCount,
                     configuration: state.configuration,
-                    shouldAutoStart: state.configuration.shouldAutoStartNextPhase(after: .focus),
+                    shouldAutoStart: shouldStartNextPhase(
+                        after: .focus,
+                        configuration: state.configuration,
+                        trigger: trigger
+                    ),
                     now: now
                 ),
                 completedFocusDuration: trigger == .completed ? state.phaseDuration : nil
@@ -151,7 +147,11 @@ struct FocusTimerEngine {
                     phase: .focus,
                     cycleFocusCount: state.cycleFocusCount,
                     configuration: state.configuration,
-                    shouldAutoStart: state.configuration.shouldAutoStartNextPhase(after: .shortBreak),
+                    shouldAutoStart: shouldStartNextPhase(
+                        after: .shortBreak,
+                        configuration: state.configuration,
+                        trigger: trigger
+                    ),
                     now: now
                 ),
                 completedFocusDuration: nil
@@ -162,7 +162,11 @@ struct FocusTimerEngine {
                     phase: .focus,
                     cycleFocusCount: 0,
                     configuration: state.configuration,
-                    shouldAutoStart: state.configuration.shouldAutoStartNextPhase(after: .longBreak),
+                    shouldAutoStart: shouldStartNextPhase(
+                        after: .longBreak,
+                        configuration: state.configuration,
+                        trigger: trigger
+                    ),
                     now: now
                 ),
                 completedFocusDuration: nil
@@ -187,5 +191,13 @@ struct FocusTimerEngine {
             isPaused: false,
             pausedAt: nil
         )
+    }
+
+    private func shouldStartNextPhase(
+        after phase: FocusTimerPhase,
+        configuration: FocusTimerConfiguration,
+        trigger: FocusTimerAdvanceTrigger
+    ) -> Bool {
+        trigger == .skipped || configuration.shouldAutoStartNextPhase(after: phase)
     }
 }

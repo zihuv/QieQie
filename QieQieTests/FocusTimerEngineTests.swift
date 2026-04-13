@@ -90,7 +90,50 @@ final class FocusTimerEngineTests: XCTestCase {
         XCTAssertNil(result.state.endTime)
     }
 
-    func testAdvanceFromSkippedFocusMovesToShortBreakWithoutRecordingOrIncrementingCount() {
+    func testAdvanceFromSkippedFocusMovesToShortBreakWithoutRecordingAndIncrementsCount() {
+        let now = Date(timeIntervalSinceReferenceDate: 100)
+        let runningFocus = FocusTimerState(
+            configuration: .default,
+            currentPhase: .focus,
+            cycleFocusCount: 2,
+            phaseDuration: 1500,
+            endTime: now,
+            isPaused: false,
+            pausedAt: nil
+        )
+
+        let result = engine.advance(runningFocus, now: now, trigger: .skipped)
+
+        XCTAssertNil(result.completedFocusDuration)
+        XCTAssertEqual(result.state.currentPhase, .shortBreak)
+        XCTAssertEqual(result.state.cycleFocusCount, 3)
+        XCTAssertEqual(result.state.phaseDuration, 5 * 60)
+        XCTAssertEqual(result.state.status(at: now), .running)
+    }
+
+    func testAdvanceFromSkippedFocusStartsBreakEvenWhenAutoBreakIsDisabled() {
+        let now = Date(timeIntervalSinceReferenceDate: 100)
+        let runningFocus = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartBreak: false),
+            currentPhase: .focus,
+            cycleFocusCount: 2,
+            phaseDuration: 1500,
+            endTime: now,
+            isPaused: false,
+            pausedAt: nil
+        )
+
+        let result = engine.advance(runningFocus, now: now, trigger: .skipped)
+
+        XCTAssertNil(result.completedFocusDuration)
+        XCTAssertEqual(result.state.currentPhase, .shortBreak)
+        XCTAssertEqual(result.state.cycleFocusCount, 3)
+        XCTAssertEqual(result.state.phaseDuration, 5 * 60)
+        XCTAssertEqual(result.state.endTime, now.addingTimeInterval(5 * 60))
+        XCTAssertEqual(result.state.status(at: now), .running)
+    }
+
+    func testAdvanceFromSkippedFocusEntersLongBreakAtCycleBoundary() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let runningFocus = FocusTimerState(
             configuration: .default,
@@ -105,9 +148,9 @@ final class FocusTimerEngineTests: XCTestCase {
         let result = engine.advance(runningFocus, now: now, trigger: .skipped)
 
         XCTAssertNil(result.completedFocusDuration)
-        XCTAssertEqual(result.state.currentPhase, .shortBreak)
-        XCTAssertEqual(result.state.cycleFocusCount, 3)
-        XCTAssertEqual(result.state.phaseDuration, 5 * 60)
+        XCTAssertEqual(result.state.currentPhase, .longBreak)
+        XCTAssertEqual(result.state.cycleFocusCount, 4)
+        XCTAssertEqual(result.state.phaseDuration, 15 * 60)
         XCTAssertEqual(result.state.status(at: now), .running)
     }
 
@@ -154,6 +197,27 @@ final class FocusTimerEngineTests: XCTestCase {
         XCTAssertEqual(result.state.status(at: now), .idle)
         XCTAssertEqual(result.state.phaseDuration, 25 * 60)
         XCTAssertNil(result.state.endTime)
+    }
+
+    func testAdvanceFromSkippedBreakStartsNextFocusEvenWhenAutoNextFocusIsDisabled() {
+        let now = Date(timeIntervalSinceReferenceDate: 100)
+        let runningBreak = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartNextFocus: false),
+            currentPhase: .shortBreak,
+            cycleFocusCount: 2,
+            phaseDuration: 5 * 60,
+            endTime: now,
+            isPaused: false,
+            pausedAt: nil
+        )
+
+        let result = engine.advance(runningBreak, now: now, trigger: .skipped)
+
+        XCTAssertEqual(result.state.currentPhase, .focus)
+        XCTAssertEqual(result.state.cycleFocusCount, 2)
+        XCTAssertEqual(result.state.phaseDuration, 25 * 60)
+        XCTAssertEqual(result.state.endTime, now.addingTimeInterval(25 * 60))
+        XCTAssertEqual(result.state.status(at: now), .running)
     }
 
     func testApplyConfigurationUpdatesIdlePhaseDurationAndClampsInterval() {

@@ -7,7 +7,7 @@ enum SettingsPopoverInitialPanel {
 
 enum SettingsPopoverLayout {
     static let mainWidth: CGFloat = 236
-    static let mainEstimatedHeight: CGFloat = 180
+    static let mainEstimatedHeight: CGFloat = 220
     static let mainSize = CGSize(width: mainWidth, height: mainEstimatedHeight)
     static let settingsSize = CGSize(width: 344, height: 408)
 
@@ -30,6 +30,7 @@ enum FocusTimerAccessibilityID {
         static let mainButton = "settingsPopover.mainButton"
         static let resetButton = "settingsPopover.resetButton"
         static let skipButton = "settingsPopover.skipButton"
+        static let taskNameField = "settingsPopover.taskNameField"
         static let focusMinutesField = "settingsPopover.focusMinutesField"
         static let shortBreakMinutesField = "settingsPopover.shortBreakMinutesField"
         static let longBreakMinutesField = "settingsPopover.longBreakMinutesField"
@@ -115,6 +116,7 @@ struct SettingsPopover: View {
     private var mainContent: some View {
         VStack(spacing: 10) {
             headerRow(title: focusTimerManager.state.currentPhase.title, showsBack: false)
+            taskNameSection
             statisticsSection
             controlSection
         }
@@ -271,6 +273,27 @@ struct SettingsPopover: View {
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
         .cornerRadius(12)
+    }
+
+    private var taskNameSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("当前任务")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            TextField("输入任务", text: taskNameBinding)
+                .textFieldStyle(.plain)
+                .lineLimit(1)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.2), lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
     }
 
     private var controlSection: some View {
@@ -489,6 +512,13 @@ struct SettingsPopover: View {
 
     private func minutesString(from duration: TimeInterval) -> String {
         String(max(1, Int(duration.rounded(.down)) / 60))
+    }
+
+    private var taskNameBinding: Binding<String> {
+        Binding(
+            get: { focusTimerManager.currentTaskName },
+            set: { focusTimerManager.updateCurrentTaskName($0) }
+        )
     }
 
     private var canOpenStatistics: Bool {

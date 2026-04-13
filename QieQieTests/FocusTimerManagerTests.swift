@@ -1,8 +1,20 @@
 import XCTest
+import SwiftData
 @testable import QieQie
 
 @MainActor
 final class FocusTimerManagerTests: XCTestCase {
+    func testCurrentTaskNamePersistsAcrossManagerInstances() {
+        let defaults = makeUserDefaults()
+        let firstManager = FocusTimerManager(userDefaults: defaults)
+
+        firstManager.updateCurrentTaskName("写周报")
+
+        let secondManager = FocusTimerManager(userDefaults: defaults)
+
+        XCTAssertEqual(secondManager.currentTaskName, "写周报")
+    }
+
     func testStartUsesInjectedClockAndSchedulesRepeatingTick() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
@@ -66,6 +78,29 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(recordedDurations, [TimeInterval(25 * 60)])
     }
 
+    func testProcessTimerTickRecordsTaskNameCapturedWhenFocusStarts() throws {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let historyManager = try makeHistoryManager()
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
+
+        manager.updateCurrentTaskName("设计评审")
+        manager.startCurrentPhase()
+        manager.updateCurrentTaskName("整理邮件")
+
+        clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
+        manager.processTimerTick()
+
+        let sessions = historyManager.getAllSessions()
+        XCTAssertEqual(sessions.count, 1)
+        XCTAssertEqual(sessions.first?.taskName, "设计评审")
+    }
+
     func testProcessTimerTickLeavesBreakIdleWhenAutoBreakIsDisabled() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
@@ -106,9 +141,61 @@ final class FocusTimerManagerTests: XCTestCase {
 
         XCTAssertEqual(runningTask.cancelCallCount, 1)
         XCTAssertEqual(manager.state.currentPhase, .shortBreak)
-        XCTAssertEqual(manager.state.cycleFocusCount, 0)
+        XCTAssertEqual(manager.state.cycleFocusCount, 1)
         XCTAssertEqual(manager.state.status(at: clock.now()), .running)
         XCTAssertEqual(recordedDurations, [])
+    }
+
+    func testSkipCurrentFocusStartsBreakImmediatelyWhenAutoBreakIsDisabled() throws {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let defaults = makeUserDefaults()
+        defaults.set(false, forKey: "focusTimer.configuration.autoStartBreak")
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: defaults
+        )
+
+        manager.startCurrentPhase()
+        let runningTask = try XCTUnwrap(scheduler.createdTasks.first)
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(runningTask.cancelCallCount, 1)
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.cycleFocusCount, 1)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
+        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(5 * 60))
+        XCTAssertEqual(scheduler.scheduleCallCount, 2)
+    }
+
+    func testSkipCurrentFocusEntersLongBreakAtConfiguredBoundary() throws {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
+
+        manager.state = FocusTimerState(
+            configuration: .default,
+            currentPhase: .focus,
+            cycleFocusCount: 3,
+            phaseDuration: 25 * 60,
+            endTime: clock.now().addingTimeInterval(25 * 60),
+            isPaused: false,
+            pausedAt: nil
+        )
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(manager.state.currentPhase, .longBreak)
+        XCTAssertEqual(manager.state.cycleFocusCount, 4)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
+        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(15 * 60))
+        XCTAssertEqual(scheduler.scheduleCallCount, 1)
     }
 
     func testTogglePauseUsesInjectedClockForPauseAndResume() throws {
@@ -153,6 +240,12 @@ final class FocusTimerManagerTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    private func makeHistoryManager() throws -> FocusHistoryManager {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        return FocusHistoryManager(modelContainer: container)
     }
 }
 

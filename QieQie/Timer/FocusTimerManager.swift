@@ -53,6 +53,7 @@ struct RunLoopFocusTimerTickerScheduler: FocusTimerTickerScheduling {
 @MainActor
 final class FocusTimerManager: ObservableObject {
     @Published var state: FocusTimerState
+    @Published var currentTaskName: String
 
     private enum StorageKey {
         static let focusDuration = "focusTimer.configuration.focusDuration"
@@ -62,6 +63,7 @@ final class FocusTimerManager: ObservableObject {
         static let autoStartBreak = "focusTimer.configuration.autoStartBreak"
         static let autoStartNextFocus = "focusTimer.configuration.autoStartNextFocus"
         static let autoAdvance = "focusTimer.configuration.autoAdvance"
+        static let currentTaskName = "focusTimer.currentTaskName"
     }
 
     private let engine = FocusTimerEngine()
@@ -71,6 +73,7 @@ final class FocusTimerManager: ObservableObject {
     private let focusCompletionRecorder: ((TimeInterval, Date) -> Void)?
 
     private var tickerTask: FocusTimerScheduledTask?
+    private var activeFocusTaskName: String?
 
     let focusHistoryManager: FocusHistoryManager?
 
@@ -88,6 +91,7 @@ final class FocusTimerManager: ObservableObject {
         self.userDefaults = userDefaults
         self.focusCompletionRecorder = focusCompletionRecorder
         self.state = FocusTimerEngine().makeInitialState(configuration: initialConfiguration)
+        self.currentTaskName = Self.loadCurrentTaskName(from: userDefaults)
     }
 
     var configuration: FocusTimerConfiguration {
@@ -100,8 +104,20 @@ final class FocusTimerManager: ObservableObject {
         publishState(engine.applyConfiguration(normalized, to: state))
     }
 
+    func updateCurrentTaskName(_ taskName: String) {
+        let normalized = Self.normalizeTaskNameInput(taskName)
+        guard normalized != currentTaskName else { return }
+
+        currentTaskName = normalized
+        persist(currentTaskName: normalized)
+    }
+
     func startCurrentPhase() {
         guard state.status(at: clock.now()) == .idle else { return }
+
+        if state.currentPhase == .focus {
+            activeFocusTaskName = recordedTaskName
+        }
 
         stopTimer()
         publishState(engine.start(state, now: clock.now()))
@@ -110,6 +126,7 @@ final class FocusTimerManager: ObservableObject {
 
     func resetCurrentPhase() {
         stopTimer()
+        activeFocusTaskName = nil
         publishState(engine.reset(state))
     }
 
@@ -176,11 +193,22 @@ final class FocusTimerManager: ObservableObject {
     ) {
         let result = engine.advance(state, now: date, trigger: trigger)
         if let duration = result.completedFocusDuration {
-            focusHistoryManager?.recordCompletedFocus(duration: duration, completedAt: date)
+            focusHistoryManager?.recordCompletedFocus(
+                duration: duration,
+                taskName: activeFocusTaskName ?? recordedTaskName,
+                completedAt: date
+            )
             focusCompletionRecorder?(duration, date)
+            activeFocusTaskName = nil
         }
 
         publishState(result.state)
+
+        if result.state.currentPhase == .focus, result.state.status(at: date) == .running {
+            activeFocusTaskName = recordedTaskName
+        } else if result.state.currentPhase != .focus {
+            activeFocusTaskName = nil
+        }
 
         if result.state.status(at: date) == .running {
             startTimer()
@@ -200,6 +228,10 @@ final class FocusTimerManager: ObservableObject {
         userDefaults.set(configuration.autoStartBreak, forKey: StorageKey.autoStartBreak)
         userDefaults.set(configuration.autoStartNextFocus, forKey: StorageKey.autoStartNextFocus)
         userDefaults.removeObject(forKey: StorageKey.autoAdvance)
+    }
+
+    private func persist(currentTaskName: String) {
+        userDefaults.set(currentTaskName, forKey: StorageKey.currentTaskName)
     }
 
     private static func loadConfiguration(from userDefaults: UserDefaults) -> FocusTimerConfiguration {
@@ -224,5 +256,18 @@ final class FocusTimerManager: ObservableObject {
             autoStartBreak: autoStartBreak,
             autoStartNextFocus: autoStartNextFocus
         ).normalized()
+    }
+
+    private static func loadCurrentTaskName(from userDefaults: UserDefaults) -> String {
+        normalizeTaskNameInput(userDefaults.string(forKey: StorageKey.currentTaskName) ?? "")
+    }
+
+    private static func normalizeTaskNameInput(_ taskName: String) -> String {
+        taskName.replacingOccurrences(of: "\n", with: " ")
+    }
+
+    private var recordedTaskName: String {
+        let trimmed = currentTaskName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "专注" : trimmed
     }
 }

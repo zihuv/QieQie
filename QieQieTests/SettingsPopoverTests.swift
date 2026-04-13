@@ -7,6 +7,28 @@ import XCTest
 
 @MainActor
 final class SettingsPopoverTests: XCTestCase {
+    func testMainPanelShowsTaskInputFieldAndCurrentTaskName() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        manager.updateCurrentTaskName("整理需求")
+        let host = NSHostingController(
+            rootView: SettingsPopover(focusTimerManager: manager)
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.mainSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let taskField = try XCTUnwrap(findEditableTextFields(in: host.view).first)
+        XCTAssertEqual(taskField.stringValue, "整理需求")
+        XCTAssertEqual(taskField.placeholderString, "输入任务")
+
+        window.orderOut(nil)
+    }
+
     func testMainPanelHidesRemovedSummaryCard() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let manager = FocusTimerManager(userDefaults: defaults)
@@ -109,7 +131,7 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testPopoverLayoutUsesDedicatedPanelSizes() {
         XCTAssertEqual(SettingsPopoverLayout.mainSize.width, 236)
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, 180)
+        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, 220)
         XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, 344)
         XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, 408)
         XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, 480)
@@ -245,6 +267,11 @@ final class SettingsPopoverTests: XCTestCase {
 
         return matches
     }
+
+    private func findEditableTextFields(in view: NSView) -> [NSTextField] {
+        findTextFields(in: view).filter(\.isEditable)
+    }
+
     private func renderImage(from view: NSView) -> CGImage? {
         let bounds = view.bounds
         guard
