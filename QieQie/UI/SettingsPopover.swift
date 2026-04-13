@@ -1,15 +1,40 @@
 import SwiftUI
 
+enum SettingsPopoverInitialPanel {
+    case main
+    case settings
+}
+
+enum SettingsPopoverLayout {
+    static let mainWidth: CGFloat = 236
+    static let mainEstimatedHeight: CGFloat = 180
+    static let mainSize = CGSize(width: mainWidth, height: mainEstimatedHeight)
+    static let settingsSize = CGSize(width: 244, height: 258)
+
+    static func fittedMainSize(for measuredSize: CGSize) -> CGSize {
+        CGSize(
+            width: mainWidth,
+            height: max(ceil(measuredSize.height), mainEstimatedHeight)
+        )
+    }
+}
+
 enum FocusTimerAccessibilityID {
     enum SettingsPopover {
         static let root = "settingsPopover.root"
-        static let taskNameField = "settingsPopover.taskNameField"
-        static let minutesField = "settingsPopover.minutesField"
-        static let secondsField = "settingsPopover.secondsField"
-        static let historyButton = "settingsPopover.historyButton"
+        static let statisticsButton = "settingsPopover.statisticsButton"
+        static let settingsButton = "settingsPopover.settingsButton"
+        static let backButton = "settingsPopover.backButton"
+        static let phaseTitle = "settingsPopover.phaseTitle"
+        static let progressLabel = "settingsPopover.progressLabel"
         static let mainButton = "settingsPopover.mainButton"
         static let resetButton = "settingsPopover.resetButton"
-        static let validationError = "settingsPopover.validationError"
+        static let skipButton = "settingsPopover.skipButton"
+        static let focusMinutesField = "settingsPopover.focusMinutesField"
+        static let shortBreakMinutesField = "settingsPopover.shortBreakMinutesField"
+        static let longBreakMinutesField = "settingsPopover.longBreakMinutesField"
+        static let intervalField = "settingsPopover.intervalField"
+        static let autoAdvanceToggle = "settingsPopover.autoAdvanceToggle"
     }
 
     enum StatusBar {
@@ -18,259 +43,263 @@ enum FocusTimerAccessibilityID {
     }
 }
 
-/// 设置弹窗视图
 struct SettingsPopover: View {
-    private enum InputField: Hashable {
-        case taskName
-        case minutes
-        case seconds
+    private enum Panel {
+        case main
+        case settings
     }
 
-    /// 倒计时管理器
     @ObservedObject var focusTimerManager: FocusTimerManager
 
-    /// 分钟输入
-    @State private var minutes: String = "25"
-
-    /// 秒数输入
-    @State private var seconds: String = "00"
-
-    /// 任务名称输入
-    @State private var taskName: String = ""
-
-    /// 输入错误提示
-    @State private var showError: Bool = false
-
-    /// 是否显示历史记录
-    @State private var showHistoryState: Bool = false
-
-    /// 设置面板统计数据快照，避免每次重绘都查询数据库
+    @State private var panel: Panel = .main
+    @State private var focusMinutes = "25"
+    @State private var shortBreakMinutes = "5"
+    @State private var longBreakMinutes = "15"
+    @State private var longBreakInterval = "4"
+    @State private var autoAdvance = true
     @State private var dashboardStats = FocusStatistics()
+    @State private var mainContentSize = SettingsPopoverLayout.mainSize
+    private let onPreferredSizeChange: ((CGSize) -> Void)?
+    private let onOpenStatistics: (() -> Void)?
 
-    @State private var isStartingFocusTimer = false
-    @FocusState private var focusedField: InputField?
-    var body: some View {
-        if showHistoryState, let historyManager = focusTimerManager.focusHistoryManager {
-            HistoryView(historyManager: historyManager, showHistory: $showHistoryState)
-        } else {
-            mainContent
+    init(
+        focusTimerManager: FocusTimerManager,
+        initialPanel: SettingsPopoverInitialPanel = .main,
+        onPreferredSizeChange: ((CGSize) -> Void)? = nil,
+        onOpenStatistics: (() -> Void)? = nil
+    ) {
+        self.focusTimerManager = focusTimerManager
+        self.onPreferredSizeChange = onPreferredSizeChange
+        self.onOpenStatistics = onOpenStatistics
+        let panelValue: Panel
+        switch initialPanel {
+        case .main:
+            panelValue = .main
+        case .settings:
+            panelValue = .settings
         }
+        _panel = State(initialValue: panelValue)
     }
 
-    /// 主内容视图
-    private var mainContent: some View {
-        VStack(spacing: 12) {
-            // 任务名称输入
-            taskNameSection
-
-            // 时间输入区域
-            timeInputSection
-
-            // 统计信息
-            statisticsSection
-
-            Spacer()
-
-            // 控制按钮区域
-            controlButtonsSection
+    var body: some View {
+        Group {
+            switch panel {
+            case .main:
+                mainContent
+            case .settings:
+                settingsContent
+            }
         }
-        .padding(20)
-        .frame(width: 280, height: 300)
         .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.root)
         .onAppear {
-            syncFromState()
+            syncConfigurationFields()
             refreshStatistics()
-            restoreInputFocus(to: .minutes)
+            reportPreferredSize()
         }
-        .onChange(of: focusTimerManager.state.status) { oldStatus, newStatus in
-            isStartingFocusTimer = false
-            syncFromState()
+        .onChange(of: focusTimerManager.state.configuration) { _, _ in
+            syncConfigurationFields()
+        }
+        .onChange(of: focusTimerManager.state.currentPhase) { _, _ in
             refreshStatistics()
-            restoreInputFocusIfNeeded(from: oldStatus, to: newStatus)
         }
-        .onChange(of: showHistoryState) { _, isShowingHistory in
-            if !isShowingHistory {
-                refreshStatistics()
+        .onChange(of: focusTimerManager.state.cycleFocusCount) { _, _ in
+            refreshStatistics()
+        }
+        .onChange(of: panel) { _, _ in
+            reportPreferredSize()
+        }
+    }
+
+    private var mainContent: some View {
+        VStack(spacing: 10) {
+            headerRow(title: focusTimerManager.state.currentPhase.title, showsBack: false)
+            statisticsSection
+            controlSection
+        }
+        .padding(10)
+        .frame(width: SettingsPopoverLayout.mainWidth, alignment: .top)
+        .fixedSize(horizontal: false, vertical: true)
+        .onContentSizeChange { newSize in
+            guard newSize.height > 0 else { return }
+
+            let fittedSize = SettingsPopoverLayout.fittedMainSize(for: newSize)
+            guard fittedSize != mainContentSize else { return }
+
+            mainContentSize = fittedSize
+            if panel == .main {
+                reportPreferredSize()
             }
         }
     }
 
-    /// 任务名称输入区域
-    private var taskNameSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("任务名称")
-                .font(.caption)
-                .foregroundColor(.secondary)
+    private var settingsContent: some View {
+        VStack(spacing: 10) {
+            headerRow(title: "设置", showsBack: true)
+            VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
+                    settingsRow(
+                        title: "专注时长",
+                        value: $focusMinutes,
+                        suffix: "分钟",
+                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.focusMinutesField
+                    ) { updateFocusDuration() }
 
-            TextField("输入任务名称", text: $taskName)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
-                .focused($focusedField, equals: .taskName)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
-        }
-    }
+                    settingsRow(
+                        title: "短休息",
+                        value: $shortBreakMinutes,
+                        suffix: "分钟",
+                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.shortBreakMinutesField
+                    ) { updateShortBreakDuration() }
 
-    /// 时间输入区域
-    private var timeInputSection: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 4) {
-                TextField("25", text: $minutes)
-                    .textFieldStyle(.plain)
-                    .frame(width: 50)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(6)
-                    .disabled(isTimeInputLocked)
-                    .focused($focusedField, equals: .minutes)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.minutesField)
-                    .onChange(of: minutes) { _, newValue in
-                        minutes = sanitizeNumericInput(newValue, maxLength: 3)
+                    settingsRow(
+                        title: "长休息",
+                        value: $longBreakMinutes,
+                        suffix: "分钟",
+                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.longBreakMinutesField
+                    ) { updateLongBreakDuration() }
+
+                    settingsRow(
+                        title: "长休息间隔",
+                        value: $longBreakInterval,
+                        suffix: "次专注",
+                        accessibilityID: FocusTimerAccessibilityID.SettingsPopover.intervalField,
+                        maxLength: 2,
+                        upperBound: 10
+                    ) { updateLongBreakInterval() }
+                }
+                .padding(10)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
+                .cornerRadius(12)
+
+                Toggle("自动进入下一阶段", isOn: $autoAdvance)
+                    .toggleStyle(.switch)
+                    .font(.system(size: 13))
+                    .padding(10)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
+                    .cornerRadius(12)
+                    .onChange(of: autoAdvance) { _, newValue in
+                        var configuration = focusTimerManager.configuration
+                        configuration.autoAdvance = newValue
+                        focusTimerManager.updateConfiguration(configuration)
                     }
-
-                Text(":")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                TextField("00", text: $seconds)
-                    .textFieldStyle(.plain)
-                    .frame(width: 50)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 20, weight: .medium, design: .rounded))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 6)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(6)
-                    .disabled(isTimeInputLocked)
-                    .focused($focusedField, equals: .seconds)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.secondsField)
-                    .onChange(of: seconds) { _, newValue in
-                        seconds = sanitizeNumericInput(newValue, maxLength: 2, upperBound: 59)
-                    }
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.autoAdvanceToggle)
             }
-            .opacity(isTimeInputLocked ? 0.5 : 1.0)
-
-            // 错误提示
-            if showError {
-                Text("请输入有效时间")
-                    .font(.caption2)
-                    .foregroundColor(.red)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.validationError)
-            }
+            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(8)
+        .padding(10)
+        .frame(
+            width: SettingsPopoverLayout.settingsSize.width,
+            height: SettingsPopoverLayout.settingsSize.height,
+            alignment: .top
+        )
     }
 
-    /// 统计信息区域
-    private var statisticsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("今日:")
+    private func headerRow(title: String, showsBack: Bool) -> some View {
+        PopoverHeaderBar(
+            title: title,
+            titleAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.phaseTitle,
+            backAccessibilityID: showsBack ? FocusTimerAccessibilityID.SettingsPopover.backButton : nil,
+            onBack: showsBack ? { panel = .main } : nil
+        ) {
+            if !showsBack {
+                Text(focusTimerManager.state.progressText)
                     .font(.caption)
+                    .monospacedDigit()
                     .foregroundColor(.secondary)
-                Spacer()
-                Text(todayDuration)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.progressLabel)
 
-            HStack {
-                Text("本周:")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Text(weekDuration)
-                    .font(.caption)
-                    .fontWeight(.medium)
-            }
+                Button(action: { panel = .settings }) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.settingsButton)
 
-            Button(action: { showHistoryState = true }) {
-                HStack {
+                Button(action: openStatisticsWindow) {
                     Image(systemName: "clock.arrow.circlepath")
-                    Text("查看历史记录")
+                        .font(.system(size: 13))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canOpenStatistics)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsButton)
+            }
+        }
+    }
+
+    private var statisticsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            statisticsRow(title: "今日", period: dashboardStats.today)
+            statisticsRow(title: "本周", period: dashboardStats.week)
+
+            Button(action: openStatisticsWindow) {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock.arrow.circlepath")
+                    Text("查看统计")
                 }
                 .font(.caption)
             }
             .buttonStyle(.plain)
             .foregroundColor(.accentColor)
-            .disabled(focusTimerManager.focusHistoryManager == nil)
-            .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.historyButton)
+            .disabled(!canOpenStatistics)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-        .cornerRadius(6)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
+        .cornerRadius(12)
     }
 
-    /// 控制按钮区域
-    private var controlButtonsSection: some View {
-        HStack(spacing: 10) {
-            // Start/Pause/Resume 按钮
+    private var controlSection: some View {
+        VStack(spacing: 6) {
             Button(action: mainButtonAction) {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     Image(systemName: mainButtonIcon)
                     Text(mainButtonTitle)
                 }
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .controlSize(.regular)
             .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.mainButton)
 
-            // Reset 按钮
-            Button(action: resetFocusTimer) {
-                Image(systemName: "arrow.counterclockwise")
-                    .font(.system(size: 15))
+            HStack(spacing: 6) {
+                Button(action: focusTimerManager.skipCurrentPhase) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "forward.fill")
+                        Text("跳过")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+                .disabled(!focusTimerManager.state.canSkip)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.skipButton)
+
+                Button(action: focusTimerManager.resetCurrentPhase) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.regular)
+                .disabled(!focusTimerManager.state.canReset)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.resetButton)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .disabled(!focusTimerManager.state.canReset)
-            .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.resetButton)
         }
     }
 
-    // MARK: - 计算属性
-
-    /// 今日时长
-    private var todayDuration: String {
-        FocusStatistics.formatDuration(dashboardStats.todayTotal)
-    }
-
-    /// 本周时长
-    private var weekDuration: String {
-        FocusStatistics.formatDuration(dashboardStats.weekTotal)
-    }
-
-    private var isTimeInputLocked: Bool {
-        isStartingFocusTimer || focusTimerManager.state.isEditingLocked
-    }
-
-    /// 主按钮标题
     private var mainButtonTitle: String {
         switch focusTimerManager.state.status {
         case .idle:
-            return "Start"
+            return "开始"
         case .running:
-            return "Pause"
+            return "暂停"
         case .paused:
-            return "Resume"
-        case .finished:
-            return "Start"
+            return "继续"
         }
     }
 
-    /// 主按钮图标
     private var mainButtonIcon: String {
         switch focusTimerManager.state.status {
-        case .idle, .finished:
+        case .idle:
             return "play.fill"
         case .running:
             return "pause.fill"
@@ -279,42 +308,60 @@ struct SettingsPopover: View {
         }
     }
 
-    // MARK: - 私有方法
-
-    /// 开始倒计时
-    private func startFocusTimer() {
-        guard let duration = validatedDuration() else {
-            showError = true
-            return
-        }
-
-        isStartingFocusTimer = true
-        focusedField = nil
-
-        // 启动倒计时，传入任务名称
-        focusTimerManager.startFocusTimer(duration: duration, taskName: taskName)
-
-        // 清除错误提示
-        showError = false
-    }
-
-    /// 主按钮动作
-    private func mainButtonAction() {
-        switch focusTimerManager.state.status {
-        case .idle, .finished:
-            // 开始新倒计时
-            startFocusTimer()
-        case .running:
-            focusTimerManager.pauseFocusTimer()
-        case .paused:
-            resumeFocusTimer()
+    private func statisticsRow(title: String, period: FocusStatisticsPeriod) -> some View {
+        HStack {
+            Text("\(title):")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("\(period.sessionCount) 次")
+                .font(.caption)
+            Text(FocusStatistics.formatDuration(period.totalDuration))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .frame(minWidth: 52, alignment: .trailing)
         }
     }
 
-    /// 重置倒计时
-    private func resetFocusTimer() {
-        focusTimerManager.resetFocusTimer()
-        syncFromState()
+    private func settingsRow(
+        title: String,
+        value: Binding<String>,
+        suffix: String,
+        accessibilityID: String,
+        maxLength: Int = 3,
+        upperBound: Int? = nil,
+        onCommit: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 13))
+            Spacer()
+            TextField("", text: value)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 46)
+                .multilineTextAlignment(.center)
+                .accessibilityIdentifier(accessibilityID)
+                .onChange(of: value.wrappedValue) { _, newValue in
+                    value.wrappedValue = FocusTimerDurationParser.sanitizeNumericInput(
+                        newValue,
+                        maxLength: maxLength,
+                        upperBound: upperBound
+                    )
+                    onCommit()
+                }
+            Text(suffix)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private func syncConfigurationFields() {
+        let configuration = focusTimerManager.configuration
+        focusMinutes = minutesString(from: configuration.focusDuration)
+        shortBreakMinutes = minutesString(from: configuration.shortBreakDuration)
+        longBreakMinutes = minutesString(from: configuration.longBreakDuration)
+        longBreakInterval = String(configuration.longBreakInterval)
+        autoAdvance = configuration.autoAdvance
         refreshStatistics()
     }
 
@@ -322,57 +369,93 @@ struct SettingsPopover: View {
         dashboardStats = focusTimerManager.focusHistoryManager?.getDashboardStatistics() ?? FocusStatistics()
     }
 
-    private func syncFromState() {
-        showError = false
-
-        if !focusTimerManager.state.taskName.isEmpty {
-            taskName = focusTimerManager.state.taskName
+    private func mainButtonAction() {
+        switch focusTimerManager.state.status {
+        case .idle:
+            focusTimerManager.startCurrentPhase()
+        case .running:
+            focusTimerManager.pauseCurrentPhase()
+        case .paused:
+            focusTimerManager.resumeCurrentPhase()
         }
-
-        if let lastDuration = focusTimerManager.state.lastDuration {
-            setTimeFields(from: lastDuration)
-        }
     }
 
-    private func resumeFocusTimer() {
-        focusTimerManager.resumeFocusTimer()
-        showError = false
+    private func updateFocusDuration() {
+        guard let minutes = Int(focusMinutes), minutes > 0 else { return }
+        var configuration = focusTimerManager.configuration
+        configuration.focusDuration = TimeInterval(minutes * 60)
+        focusTimerManager.updateConfiguration(configuration)
     }
 
-    private func setTimeFields(from duration: TimeInterval) {
-        let clampedDuration = max(0, Int(duration.rounded(.down)))
-        let totalMinutes = clampedDuration / 60
-        let remainingSeconds = clampedDuration % 60
-
-        minutes = String(totalMinutes)
-        seconds = String(format: "%02d", remainingSeconds)
+    private func updateShortBreakDuration() {
+        guard let minutes = Int(shortBreakMinutes), minutes > 0 else { return }
+        var configuration = focusTimerManager.configuration
+        configuration.shortBreakDuration = TimeInterval(minutes * 60)
+        focusTimerManager.updateConfiguration(configuration)
     }
 
-    private func sanitizeNumericInput(_ value: String, maxLength: Int, upperBound: Int? = nil) -> String {
-        FocusTimerDurationParser.sanitizeNumericInput(value, maxLength: maxLength, upperBound: upperBound)
+    private func updateLongBreakDuration() {
+        guard let minutes = Int(longBreakMinutes), minutes > 0 else { return }
+        var configuration = focusTimerManager.configuration
+        configuration.longBreakDuration = TimeInterval(minutes * 60)
+        focusTimerManager.updateConfiguration(configuration)
     }
 
-    private func validatedDuration() -> TimeInterval? {
-        FocusTimerDurationParser.parse(minutes: minutes, seconds: seconds)
+    private func updateLongBreakInterval() {
+        guard let interval = Int(longBreakInterval), interval > 0 else { return }
+        var configuration = focusTimerManager.configuration
+        configuration.longBreakInterval = interval
+        focusTimerManager.updateConfiguration(configuration)
     }
 
-    private func restoreInputFocusIfNeeded(from oldStatus: FocusTimerStatus, to newStatus: FocusTimerStatus) {
-        guard !showHistoryState,
-              newStatus == .idle || newStatus == .finished,
-              oldStatus == .running || oldStatus == .paused || oldStatus == .finished else { return }
-        restoreInputFocus(to: .minutes)
+    private func minutesString(from duration: TimeInterval) -> String {
+        String(max(1, Int(duration.rounded(.down)) / 60))
     }
 
-    private func restoreInputFocus(to field: InputField) {
-        DispatchQueue.main.async {
-            focusedField = field
+    private var canOpenStatistics: Bool {
+        focusTimerManager.focusHistoryManager != nil && onOpenStatistics != nil
+    }
+
+    private func openStatisticsWindow() {
+        guard canOpenStatistics else { return }
+        onOpenStatistics?()
+    }
+
+    private func reportPreferredSize() {
+        onPreferredSizeChange?(preferredSize)
+    }
+
+    private var preferredSize: CGSize {
+        switch panel {
+        case .main:
+            return mainContentSize
+        case .settings:
+            return SettingsPopoverLayout.settingsSize
         }
     }
 }
 
-/// 预览
 struct SettingsPopover_Previews: PreviewProvider {
     static var previews: some View {
         SettingsPopover(focusTimerManager: FocusTimerManager())
+    }
+}
+
+private struct ContentSizePreferenceKey: PreferenceKey {
+    static var defaultValue = CGSize.zero
+
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
+    }
+}
+
+private extension View {
+    func onContentSizeChange(_ action: @escaping (CGSize) -> Void) -> some View {
+        background(
+            GeometryReader { proxy in
+                Color.clear.preference(key: ContentSizePreferenceKey.self, value: proxy.size)
+            }
+        )
+        .onPreferenceChange(ContentSizePreferenceKey.self, perform: action)
     }
 }

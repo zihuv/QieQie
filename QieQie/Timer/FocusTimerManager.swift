@@ -50,186 +50,168 @@ struct RunLoopFocusTimerTickerScheduler: FocusTimerTickerScheduling {
     }
 }
 
-/// 倒计时管理器
-/// 核心职责：
-/// 1. 维护倒计时状态（使用 endTime: Date 模型）
-/// 2. 每秒触发状态更新
-/// 3. 提供启动/重置倒计时的方法
 @MainActor
 final class FocusTimerManager: ObservableObject {
-    /// 发布的倒计时状态
-    @Published var state = FocusTimerState()
+    @Published var state: FocusTimerState
+
+    private enum StorageKey {
+        static let focusDuration = "focusTimer.configuration.focusDuration"
+        static let shortBreakDuration = "focusTimer.configuration.shortBreakDuration"
+        static let longBreakDuration = "focusTimer.configuration.longBreakDuration"
+        static let longBreakInterval = "focusTimer.configuration.longBreakInterval"
+        static let autoAdvance = "focusTimer.configuration.autoAdvance"
+    }
 
     private let engine = FocusTimerEngine()
     private let clock: FocusTimerClock
     private let tickerScheduler: FocusTimerTickerScheduling
+    private let userDefaults: UserDefaults
+    private let focusCompletionRecorder: ((TimeInterval, Date) -> Void)?
 
-    /// 重复 tick 任务
     private var tickerTask: FocusTimerScheduledTask?
 
-    /// 专注历史记录管理器
     let focusHistoryManager: FocusHistoryManager?
-
-    /// 当前进行中的会话
-    private(set) var currentSession: FocusSession?
-
-    /// 会话开始时间
-    private var sessionStartTime: Date?
-
-    /// 累计暂停时长，避免把暂停时间计入专注时长
-    private var accumulatedPausedDuration: TimeInterval = 0
 
     init(
         focusHistoryManager: FocusHistoryManager? = nil,
         clock: FocusTimerClock = SystemFocusTimerClock(),
-        tickerScheduler: FocusTimerTickerScheduling = RunLoopFocusTimerTickerScheduler()
+        tickerScheduler: FocusTimerTickerScheduling = RunLoopFocusTimerTickerScheduler(),
+        userDefaults: UserDefaults = .standard,
+        focusCompletionRecorder: ((TimeInterval, Date) -> Void)? = nil
     ) {
+        let initialConfiguration = Self.loadConfiguration(from: userDefaults)
         self.focusHistoryManager = focusHistoryManager
         self.clock = clock
         self.tickerScheduler = tickerScheduler
+        self.userDefaults = userDefaults
+        self.focusCompletionRecorder = focusCompletionRecorder
+        self.state = FocusTimerEngine().makeInitialState(configuration: initialConfiguration)
     }
 
-    // MARK: - 公开方法
+    var configuration: FocusTimerConfiguration {
+        state.configuration
+    }
 
-    /// 开始倒计时
-    /// - Parameters:
-    ///   - duration: 倒计时时长（秒）
-    ///   - taskName: 任务名称
-    func startFocusTimer(duration: TimeInterval, taskName: String = "") {
+    func updateConfiguration(_ configuration: FocusTimerConfiguration) {
+        let normalized = configuration.normalized()
+        persist(configuration: normalized)
+        publishState(engine.applyConfiguration(normalized, to: state))
+    }
+
+    func startCurrentPhase() {
+        guard state.status(at: clock.now()) == .idle else { return }
+
         stopTimer()
-
-        // 创建新的会话
-        let now = clock.now()
-        let effectiveTaskName = normalizedTaskName(taskName)
-        sessionStartTime = now
-        accumulatedPausedDuration = 0
-        currentSession = focusHistoryManager?.createSession(taskName: effectiveTaskName, startTime: now)
-
-        publishState(engine.start(duration: duration, taskName: effectiveTaskName, now: now))
-
-        // 启动定时器
+        publishState(engine.start(state, now: clock.now()))
         startTimer()
     }
 
-    /// 重置倒计时
-    /// 将倒计时重置到空闲状态
-    func resetFocusTimer() {
-        finalizeCurrentSession(isCompleted: false, endedAt: clock.now())
-
-        // 回到 idle 状态，清除所有计时信息
+    func resetCurrentPhase() {
         stopTimer()
         publishState(engine.reset(state))
     }
 
-    /// 暂停倒计时
-    func pauseFocusTimer() {
-        // 先停止定时器，防止竞态条件
+    func pauseCurrentPhase() {
         stopTimer()
         guard let pausedState = engine.pause(state, now: clock.now()) else { return }
         publishState(pausedState)
     }
 
-    /// 继续倒计时
-    func resumeFocusTimer() {
+    func resumeCurrentPhase() {
         guard let resumeResult = engine.resume(state, now: clock.now()) else { return }
-        accumulatedPausedDuration += resumeResult.pauseDuration
         publishState(resumeResult.state)
         startTimer()
     }
 
-    /// 切换暂停/继续状态
     func togglePause() {
         let currentStatus = state.status(at: clock.now())
         if currentStatus == .running {
-            pauseFocusTimer()
+            pauseCurrentPhase()
         } else if currentStatus == .paused {
-            resumeFocusTimer()
+            resumeCurrentPhase()
         }
     }
 
-    /// 在暂停状态下更新剩余时间，供用户调整后继续计时
-    func updatePausedRemainingTime(duration: TimeInterval) {
-        guard let updatedState = engine.updatePausedRemainingTime(state, duration: duration) else { return }
-        publishState(updatedState)
+    func skipCurrentPhase() {
+        stopTimer()
+        transitionToNextPhase(at: clock.now(), trigger: .skipped)
     }
 
-    /// 处理一次定时 tick，供测试或 focused harness 显式驱动状态刷新。
     func processTimerTick() {
         updateState(now: clock.now())
     }
 
-    // MARK: - 私有方法
-
-    /// 启动 1 秒定时器
     private func startTimer() {
-        stopTimer() // 先停止之前的定时器
+        stopTimer()
 
         tickerTask = tickerScheduler.scheduleRepeating(interval: 1.0) { [weak self] in
             self?.processTimerTick()
         }
     }
 
-    /// 停止定时器
     private func stopTimer() {
         tickerTask?.cancel()
         tickerTask = nil
     }
 
-    /// 更新状态
-    /// 检查倒计时是否完成，如果完成则停止定时器
     private func updateState(now: Date) {
-        // 如果已暂停，不更新状态
-        if state.isPaused {
+        if state.isPaused || state.status(at: now) == .idle {
             return
         }
 
-        // 检查是否完成
-        if engine.shouldFinish(state, now: now) {
-            finalizeCurrentSession(isCompleted: true, endedAt: now)
+        if engine.shouldAdvance(state, now: now) {
             stopTimer()
+            transitionToNextPhase(at: now, trigger: .completed)
+            return
         }
 
         publishState(state.refreshed())
     }
 
-    private func finalizeCurrentSession(isCompleted: Bool, endedAt: Date) {
-        guard let session = currentSession, let startTime = sessionStartTime else {
-            clearCurrentSession()
-            return
+    private func transitionToNextPhase(
+        at date: Date,
+        trigger: FocusTimerAdvanceTrigger
+    ) {
+        let result = engine.advance(state, now: date, trigger: trigger)
+        if let duration = result.completedFocusDuration {
+            focusHistoryManager?.recordCompletedFocus(duration: duration, completedAt: date)
+            focusCompletionRecorder?(duration, date)
         }
 
-        let actualDuration = engine.actualDuration(
-            startedAt: startTime,
-            endedAt: endedAt,
-            accumulatedPausedDuration: accumulatedPausedDuration,
-            state: state
-        )
+        publishState(result.state)
 
-        focusHistoryManager?.finishSession(
-            session,
-            endTime: endedAt,
-            duration: actualDuration,
-            isCompleted: isCompleted
-        )
-        clearCurrentSession()
-    }
-
-    private func clearCurrentSession() {
-        currentSession = nil
-        sessionStartTime = nil
-        accumulatedPausedDuration = 0
-    }
-
-    private func normalizedTaskName(_ taskName: String) -> String {
-        let trimmed = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "专注时间" : trimmed
+        if result.state.status(at: date) == .running {
+            startTimer()
+        }
     }
 
     private func publishState(_ newState: FocusTimerState) {
         state = newState
-        // `@Published` emits before the stored value changes. Send a second invalidation
-        // after mutation so SwiftUI views that read `focusTimerManager.state` re-render
-        // against the updated value immediately instead of waiting for the next tick.
         objectWillChange.send()
+    }
+
+    private func persist(configuration: FocusTimerConfiguration) {
+        userDefaults.set(configuration.focusDuration, forKey: StorageKey.focusDuration)
+        userDefaults.set(configuration.shortBreakDuration, forKey: StorageKey.shortBreakDuration)
+        userDefaults.set(configuration.longBreakDuration, forKey: StorageKey.longBreakDuration)
+        userDefaults.set(configuration.longBreakInterval, forKey: StorageKey.longBreakInterval)
+        userDefaults.set(configuration.autoAdvance, forKey: StorageKey.autoAdvance)
+    }
+
+    private static func loadConfiguration(from userDefaults: UserDefaults) -> FocusTimerConfiguration {
+        let defaults = FocusTimerConfiguration.default
+        let focusDuration = userDefaults.object(forKey: StorageKey.focusDuration) as? Double ?? defaults.focusDuration
+        let shortBreakDuration = userDefaults.object(forKey: StorageKey.shortBreakDuration) as? Double ?? defaults.shortBreakDuration
+        let longBreakDuration = userDefaults.object(forKey: StorageKey.longBreakDuration) as? Double ?? defaults.longBreakDuration
+        let longBreakInterval = userDefaults.object(forKey: StorageKey.longBreakInterval) as? Int ?? defaults.longBreakInterval
+        let autoAdvance = userDefaults.object(forKey: StorageKey.autoAdvance) as? Bool ?? defaults.autoAdvance
+
+        return FocusTimerConfiguration(
+            focusDuration: focusDuration,
+            shortBreakDuration: shortBreakDuration,
+            longBreakDuration: longBreakDuration,
+            longBreakInterval: longBreakInterval,
+            autoAdvance: autoAdvance
+        ).normalized()
     }
 }

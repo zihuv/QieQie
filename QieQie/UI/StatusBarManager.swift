@@ -10,18 +10,18 @@ import SwiftUI
 /// 4. 显示设置 Popover
 @MainActor
 final class StatusBarManager: NSObject, NSPopoverDelegate {
-    private let finishedTitle = "Done"
     // NSStatusBarButton 自带左右留白，这里只补少量余量避免文字贴边。
     private let titlePadding: CGFloat = 0
-    private let titleAttributes: [NSAttributedString.Key: Any] = [
-        .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
-    ]
+    private let titleFont = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .medium)
 
     /// 状态栏项
     private var statusItem: NSStatusItem?
 
     /// Popover
     private var popover: NSPopover?
+
+    /// 统计窗口
+    private var statisticsWindowController: StatisticsWindowController?
 
     /// 倒计时管理器
     private let focusTimerManager: FocusTimerManager
@@ -124,14 +124,7 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
             )
         case .running, .paused:
             applyFixedWidthTitle(
-                FocusDisplayFormatter.countdown(state.remainingTime ?? 0),
-                to: button,
-                statusItem: statusItem,
-                state: state
-            )
-        case .finished:
-            applyFixedWidthTitle(
-                finishedTitle,
+                FocusDisplayFormatter.countdown(state.remainingTime),
                 to: button,
                 statusItem: statusItem,
                 state: state
@@ -158,15 +151,15 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
     ) {
         button.image = nil
         button.imagePosition = .noImage
-        setButtonTitle(title, on: button)
+        setButtonTitle(title, on: button, state: state)
         statusItem.length = reservedTitleWidth(for: state)
     }
 
-    private func setButtonTitle(_ title: String, on button: NSStatusBarButton) {
+    private func setButtonTitle(_ title: String, on button: NSStatusBarButton, state: FocusTimerState) {
         button.title = title
         button.attributedTitle = NSAttributedString(
             string: title,
-            attributes: titleAttributes
+            attributes: titleAttributes(for: state)
         )
     }
 
@@ -176,28 +169,38 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
     }
 
     private func reservedTitleWidth(for state: FocusTimerState) -> CGFloat {
-        let widestTitle = [finishedTitle, countdownReferenceTitle(for: state)]
-            .map(measuredWidth(for:))
-            .max() ?? 0
+        let widestTitle = measuredWidth(for: countdownReferenceTitle(for: state))
         return widestTitle + titlePadding
     }
 
     // 用本次倒计时的初始展示文本作为宽度基准，避免剩余时间跨位数时抖动。
     private func countdownReferenceTitle(for state: FocusTimerState) -> String {
-        guard let lastDuration = state.lastDuration else {
-            return "00:00"
-        }
-
-        return FocusDisplayFormatter.countdown(lastDuration)
+        FocusDisplayFormatter.countdown(state.phaseDuration)
     }
 
     private func measuredWidth(for title: String) -> CGFloat {
         ceil(
             NSAttributedString(
                 string: title,
-                attributes: titleAttributes
+                attributes: [.font: titleFont]
             ).size().width
         )
+    }
+
+    private func titleAttributes(for state: FocusTimerState) -> [NSAttributedString.Key: Any] {
+        [
+            .font: titleFont,
+            .foregroundColor: Self.countdownColor(for: state.currentPhase)
+        ]
+    }
+
+    static func countdownColor(for phase: FocusTimerPhase) -> NSColor {
+        switch phase {
+        case .focus:
+            return .labelColor
+        case .shortBreak, .longBreak:
+            return .systemGreen
+        }
     }
 
     private func restorePopoverFocusIfNeeded(for state: FocusTimerState) {
@@ -210,6 +213,10 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
 
     var isSettingsPopoverShown: Bool {
         popover?.isShown == true
+    }
+
+    var isStatisticsWindowShown: Bool {
+        statisticsWindowController?.isShown == true
     }
 
     func toggleSettingsPopover() {
@@ -245,6 +252,26 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
         self.popover = nil
     }
 
+    func showStatisticsWindow() {
+        guard let historyManager = focusTimerManager.focusHistoryManager else { return }
+
+        hideSettingsPopover()
+
+        let controller: StatisticsWindowController
+        if let statisticsWindowController {
+            controller = statisticsWindowController
+        } else {
+            controller = StatisticsWindowController(historyManager: historyManager)
+            statisticsWindowController = controller
+        }
+
+        controller.showWindow()
+    }
+
+    func closeStatisticsWindow() {
+        statisticsWindowController?.closeWindow()
+    }
+
     func focusSettingsPopoverIfNeeded() {
         guard let popover, popover.isShown else { return }
 
@@ -257,11 +284,20 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
 
     private func makeSettingsPopover() -> NSPopover {
         let newPopover = NSPopover()
-        newPopover.contentSize = NSSize(width: 320, height: 400)
+        newPopover.contentSize = SettingsPopoverLayout.mainSize
         newPopover.behavior = .transient
         newPopover.delegate = self
         newPopover.contentViewController = NSHostingController(
-            rootView: SettingsPopover(focusTimerManager: focusTimerManager)
+            rootView: SettingsPopover(
+                focusTimerManager: focusTimerManager,
+                onPreferredSizeChange: { [weak newPopover] size in
+                    guard let newPopover, newPopover.contentSize != size else { return }
+                    newPopover.contentSize = size
+                },
+                onOpenStatistics: { [weak self] in
+                    self?.showStatisticsWindow()
+                }
+            )
         )
         return newPopover
     }
@@ -273,5 +309,46 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         popover = nil
+    }
+}
+
+@MainActor
+private final class StatisticsWindowController: NSWindowController {
+    init(historyManager: FocusHistoryManager) {
+        let hostingController = NSHostingController(
+            rootView: HistoryView(historyManager: historyManager)
+        )
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: StatisticsWindowLayout.defaultSize),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+
+        window.title = "统计"
+        window.contentViewController = hostingController
+        window.minSize = StatisticsWindowLayout.minSize
+        window.setContentSize(StatisticsWindowLayout.defaultSize)
+        window.isReleasedWhenClosed = false
+
+        super.init(window: window)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    var isShown: Bool {
+        window?.isVisible == true
+    }
+
+    func showWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    func closeWindow() {
+        window?.close()
     }
 }

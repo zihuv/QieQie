@@ -27,6 +27,7 @@
 		E1035 /* SettingsPopoverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1034; };
 		E1037 /* FocusHistoryAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1036; };
 		E1039 /* FocusHistoryAnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1038; };
+		E1041 /* PopoverHeaderBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1040; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,7 @@
 		E1034 /* SettingsPopoverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopoverTests.swift; sourceTree = "<group>"; };
 		E1036 /* FocusHistoryAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryAnalytics.swift; sourceTree = "<group>"; };
 		E1038 /* FocusHistoryAnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryAnalyticsTests.swift; sourceTree = "<group>"; };
+		E1040 /* PopoverHeaderBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverHeaderBar.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2001 /* QieQie.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QieQie.entitlements; sourceTree = "<group>"; };
 		E9000 /* QieQie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QieQie.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -145,6 +147,7 @@
 			children = (
 				E1012,
 				E1010,
+				E1040,
 				E1008,
 			);
 			path = UI;
@@ -275,6 +278,7 @@
 				E1009,
 				E1011,
 				E1013,
+				E1041,
 				E1015,
 				E1017,
 				E1037,

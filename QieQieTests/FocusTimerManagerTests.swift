@@ -6,13 +6,16 @@ final class FocusTimerManagerTests: XCTestCase {
     func testStartUsesInjectedClockAndSchedulesRepeatingTick() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
-        let manager = FocusTimerManager(clock: clock, tickerScheduler: scheduler)
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
 
-        manager.startFocusTimer(duration: 30, taskName: "Write")
+        manager.startCurrentPhase()
 
-        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(30))
-        XCTAssertEqual(manager.state.lastDuration, 30)
-        XCTAssertEqual(manager.state.taskName, "Write")
+        XCTAssertEqual(manager.state.currentPhase, .focus)
+        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(25 * 60))
         XCTAssertEqual(scheduler.scheduleCallCount, 1)
         XCTAssertEqual(scheduler.lastInterval, 1)
     }
@@ -20,70 +23,105 @@ final class FocusTimerManagerTests: XCTestCase {
     func testStartPublishesUpdatedRunningStateToObjectWillChangeObservers() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
-        let manager = FocusTimerManager(clock: clock, tickerScheduler: scheduler)
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
         var observedStatuses: [FocusTimerStatus] = []
 
         let cancellable = manager.objectWillChange.sink {
             observedStatuses.append(manager.state.status(at: clock.now()))
         }
 
-        manager.startFocusTimer(duration: 30, taskName: "Write")
+        manager.startCurrentPhase()
 
         XCTAssertEqual(observedStatuses, [.idle, .running])
         withExtendedLifetime(cancellable) {}
     }
 
-    func testProcessTimerTickUsesInjectedClockToFinishTimer() throws {
+    func testProcessTimerTickAdvancesToBreakAndRecordsCompletedFocus() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
-        let manager = FocusTimerManager(clock: clock, tickerScheduler: scheduler)
+        var recordedDurations: [TimeInterval] = []
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults(),
+            focusCompletionRecorder: { duration, _ in
+                recordedDurations.append(duration)
+            }
+        )
 
-        manager.startFocusTimer(duration: 5, taskName: "Write")
+        manager.startCurrentPhase()
         let task = try XCTUnwrap(scheduler.createdTasks.first)
 
-        clock.currentDate = clock.currentDate.addingTimeInterval(6)
+        clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
         manager.processTimerTick()
 
-        XCTAssertEqual(manager.state.status(at: clock.now()), .finished)
         XCTAssertEqual(task.cancelCallCount, 1)
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.cycleFocusCount, 1)
+        XCTAssertEqual(manager.state.phaseDuration, 5 * 60)
+        XCTAssertEqual(recordedDurations, [TimeInterval(25 * 60)])
     }
 
-    func testScheduledHandlerCanDriveTickWithoutRealTimer() throws {
+    func testSkipCurrentFocusAdvancesWithoutWaitingForTimerBoundary() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
-        let manager = FocusTimerManager(clock: clock, tickerScheduler: scheduler)
+        var recordedDurations: [TimeInterval] = []
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults(),
+            focusCompletionRecorder: { duration, _ in
+                recordedDurations.append(duration)
+            }
+        )
 
-        manager.startFocusTimer(duration: 5, taskName: "Write")
-        let task = try XCTUnwrap(scheduler.createdTasks.first)
+        manager.startCurrentPhase()
+        let runningTask = try XCTUnwrap(scheduler.createdTasks.first)
 
-        clock.currentDate = clock.currentDate.addingTimeInterval(6)
-        scheduler.fireLatest()
+        manager.skipCurrentPhase()
 
-        XCTAssertEqual(manager.state.status(at: clock.now()), .finished)
-        XCTAssertEqual(task.cancelCallCount, 1)
+        XCTAssertEqual(runningTask.cancelCallCount, 1)
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.cycleFocusCount, 0)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
+        XCTAssertEqual(recordedDurations, [])
     }
 
     func testTogglePauseUsesInjectedClockForPauseAndResume() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
-        let manager = FocusTimerManager(clock: clock, tickerScheduler: scheduler)
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
 
-        manager.startFocusTimer(duration: 10, taskName: "Write")
+        manager.startCurrentPhase()
         let firstTask = try XCTUnwrap(scheduler.createdTasks.first)
 
         clock.currentDate = clock.currentDate.addingTimeInterval(3)
         manager.togglePause()
 
         XCTAssertTrue(manager.state.isPaused)
-        XCTAssertEqual(manager.state.remainingTime(at: clock.now()), 7)
+        XCTAssertEqual(manager.state.remainingTime(at: clock.now()), 1497)
         XCTAssertEqual(firstTask.cancelCallCount, 1)
 
         clock.currentDate = clock.currentDate.addingTimeInterval(5)
         manager.togglePause()
 
         XCTAssertEqual(manager.state.status(at: clock.now()), .running)
-        XCTAssertEqual(manager.state.endTime, Date(timeIntervalSinceReferenceDate: 115))
+        XCTAssertEqual(manager.state.endTime, Date(timeIntervalSinceReferenceDate: 1605))
         XCTAssertEqual(scheduler.scheduleCallCount, 2)
+    }
+    private func makeUserDefaults() -> UserDefaults {
+        let suiteName = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return defaults
     }
 }
 

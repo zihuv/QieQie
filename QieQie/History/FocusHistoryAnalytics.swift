@@ -4,44 +4,53 @@ enum FocusHistoryAnalytics {
     static func aggregateStatistics(
         from sessions: [FocusSession],
         now: Date = Date(),
-        calendar: Calendar = .current
+        calendar: Calendar = FocusCalendar.analytics
     ) -> FocusStatistics {
         let startOfDay = calendar.startOfDay(for: now)
         let startOfWeek = self.startOfWeek(for: now, calendar: calendar)
         let startOfMonth = self.startOfMonth(for: now, calendar: calendar)
+        let completedSessions = sessions.filter(\.isCompleted)
 
-        var statistics = FocusStatistics()
-        statistics.sessionCount = sessions.count
-        statistics.completedCount = sessions.filter(\.isCompleted).count
-        statistics.allTimeTotal = sessions.reduce(0) { $0 + $1.duration }
-        statistics.todayTotal = sessions.filter { $0.startTime >= startOfDay }.reduce(0) { $0 + $1.duration }
-        statistics.weekTotal = sessions.filter { $0.startTime >= startOfWeek }.reduce(0) { $0 + $1.duration }
-        statistics.monthTotal = sessions.filter { $0.startTime >= startOfMonth }.reduce(0) { $0 + $1.duration }
-        return statistics
+        return FocusStatistics(
+            today: summary(
+                from: completedSessions.filter { completionDate(for: $0) >= startOfDay }
+            ),
+            week: summary(
+                from: completedSessions.filter { completionDate(for: $0) >= startOfWeek }
+            ),
+            month: summary(
+                from: completedSessions.filter { completionDate(for: $0) >= startOfMonth }
+            ),
+            allTime: summary(from: completedSessions)
+        )
     }
 
     static func buildInsights(
         from sessions: [FocusSession],
         now: Date = Date(),
-        calendar: Calendar = .current,
+        calendar: Calendar = FocusCalendar.analytics,
         trendDayCount: Int = 7
     ) -> FocusHistoryInsights {
         FocusHistoryInsights(
-            recentDailyTrend: recentDailyTrend(from: sessions, now: now, calendar: calendar, dayCount: trendDayCount),
-            currentStreak: currentStreak(from: sessions, calendar: calendar),
-            longestSessionDuration: sessions.map(\.duration).max() ?? 0
+            recentDailyTrend: recentDailyTrend(
+                from: sessions,
+                now: now,
+                calendar: calendar,
+                dayCount: trendDayCount
+            )
         )
     }
 
     static func recentDailyTrend(
         from sessions: [FocusSession],
         now: Date = Date(),
-        calendar: Calendar = .current,
+        calendar: Calendar = FocusCalendar.analytics,
         dayCount: Int = 7
     ) -> [FocusDailyTrendPoint] {
         guard dayCount > 0 else { return [] }
 
-        let sessionsByDay = groupedSessionsByDay(sessions, calendar: calendar)
+        let completedSessions = sessions.filter(\.isCompleted)
+        let sessionsByDay = groupedSessionsByDay(completedSessions, calendar: calendar)
         let startOfToday = calendar.startOfDay(for: now)
 
         return (0..<dayCount).reversed().compactMap { offset in
@@ -53,29 +62,16 @@ enum FocusHistoryAnalytics {
             return FocusDailyTrendPoint(
                 date: day,
                 totalDuration: daySessions.reduce(0) { $0 + $1.duration },
-                sessionCount: daySessions.count,
-                completedCount: daySessions.filter(\.isCompleted).count
+                sessionCount: daySessions.count
             )
         }
     }
 
-    static func currentStreak(
-        from sessions: [FocusSession],
-        calendar: Calendar = .current
-    ) -> Int {
-        let activeDays = Set(sessions.map { calendar.startOfDay(for: $0.startTime) })
-        guard var currentDay = activeDays.max() else { return 0 }
-
-        var streak = 0
-        while activeDays.contains(currentDay) {
-            streak += 1
-            guard let previousDay = calendar.date(byAdding: .day, value: -1, to: currentDay) else {
-                break
-            }
-            currentDay = previousDay
-        }
-
-        return streak
+    private static func summary(from sessions: [FocusSession]) -> FocusStatisticsPeriod {
+        FocusStatisticsPeriod(
+            sessionCount: sessions.count,
+            totalDuration: sessions.reduce(0) { $0 + $1.duration }
+        )
     }
 
     private static func groupedSessionsByDay(
@@ -83,8 +79,12 @@ enum FocusHistoryAnalytics {
         calendar: Calendar
     ) -> [Date: [FocusSession]] {
         Dictionary(grouping: sessions) { session in
-            calendar.startOfDay(for: session.startTime)
+            calendar.startOfDay(for: completionDate(for: session))
         }
+    }
+
+    private static func completionDate(for session: FocusSession) -> Date {
+        session.endTime ?? session.startTime
     }
 
     private static func startOfWeek(for date: Date, calendar: Calendar) -> Date {

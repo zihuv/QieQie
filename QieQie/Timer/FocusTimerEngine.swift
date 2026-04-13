@@ -5,87 +5,187 @@ struct FocusTimerResumeResult {
     let pauseDuration: TimeInterval
 }
 
-/// 纯逻辑计时引擎，负责状态迁移和时间计算。
+struct FocusTimerAdvanceResult {
+    let state: FocusTimerState
+    let completedFocusDuration: TimeInterval?
+}
+
+enum FocusTimerAdvanceTrigger {
+    case completed
+    case skipped
+}
+
 struct FocusTimerEngine {
-    func start(duration: TimeInterval, taskName: String, now: Date) -> FocusTimerState {
+    func makeInitialState(configuration: FocusTimerConfiguration = .default) -> FocusTimerState {
+        makePhaseState(
+            phase: .focus,
+            cycleFocusCount: 0,
+            configuration: configuration.normalized(),
+            shouldAutoStart: false,
+            now: Date()
+        )
+    }
+
+    func applyConfiguration(_ configuration: FocusTimerConfiguration, to state: FocusTimerState) -> FocusTimerState {
+        let normalized = configuration.normalized()
+        let clampedCycleFocusCount = min(state.cycleFocusCount, normalized.longBreakInterval)
+        let phaseDuration: TimeInterval
+
+        if state.status == .idle {
+            phaseDuration = normalized.duration(for: state.currentPhase)
+        } else {
+            phaseDuration = state.phaseDuration
+        }
+
+        return FocusTimerState(
+            configuration: normalized,
+            currentPhase: state.currentPhase,
+            cycleFocusCount: clampedCycleFocusCount,
+            phaseDuration: phaseDuration,
+            endTime: state.endTime,
+            isPaused: state.isPaused,
+            pausedAt: state.pausedAt
+        )
+    }
+
+    func start(_ state: FocusTimerState, now: Date) -> FocusTimerState {
         FocusTimerState(
-            endTime: now.addingTimeInterval(duration),
-            lastDuration: duration,
+            configuration: state.configuration,
+            currentPhase: state.currentPhase,
+            cycleFocusCount: state.cycleFocusCount,
+            phaseDuration: state.phaseDuration,
+            endTime: now.addingTimeInterval(state.phaseDuration),
             isPaused: false,
-            pausedAt: nil,
-            taskName: taskName
+            pausedAt: nil
         )
     }
 
     func reset(_ state: FocusTimerState) -> FocusTimerState {
-        state.idlePreservingInputs()
+        makePhaseState(
+            phase: state.currentPhase,
+            cycleFocusCount: state.cycleFocusCount,
+            configuration: state.configuration,
+            shouldAutoStart: false,
+            now: Date()
+        )
     }
 
     func pause(_ state: FocusTimerState, now: Date) -> FocusTimerState? {
-        guard state.status(at: now) == .running, let endTime = state.endTime else { return nil }
+        guard state.status(at: now) == .running, let endTime = state.endTime else {
+            return nil
+        }
 
         let currentRemaining = max(0, ceil(endTime.timeIntervalSince(now)))
 
         return FocusTimerState(
+            configuration: state.configuration,
+            currentPhase: state.currentPhase,
+            cycleFocusCount: state.cycleFocusCount,
+            phaseDuration: state.phaseDuration,
             endTime: now.addingTimeInterval(currentRemaining),
-            lastDuration: state.lastDuration,
             isPaused: true,
-            pausedAt: now,
-            taskName: state.taskName
+            pausedAt: now
         )
     }
 
     func resume(_ state: FocusTimerState, now: Date) -> FocusTimerResumeResult? {
         guard state.status(at: now) == .paused,
-              let oldEndTime = state.endTime,
-              let pausedAt = state.pausedAt else { return nil }
+              let pausedAt = state.pausedAt,
+              let endTime = state.endTime else {
+            return nil
+        }
 
         let pauseDuration = max(0, now.timeIntervalSince(pausedAt))
         let resumedState = FocusTimerState(
-            endTime: oldEndTime.addingTimeInterval(pauseDuration),
-            lastDuration: state.lastDuration,
+            configuration: state.configuration,
+            currentPhase: state.currentPhase,
+            cycleFocusCount: state.cycleFocusCount,
+            phaseDuration: state.phaseDuration,
+            endTime: endTime.addingTimeInterval(pauseDuration),
             isPaused: false,
-            pausedAt: nil,
-            taskName: state.taskName
+            pausedAt: nil
         )
 
         return FocusTimerResumeResult(state: resumedState, pauseDuration: pauseDuration)
     }
 
-    func updatePausedRemainingTime(_ state: FocusTimerState, duration: TimeInterval) -> FocusTimerState? {
-        guard state.isPaused, let pausedAt = state.pausedAt else { return nil }
-
-        let adjustedDuration = max(1, duration.rounded(.down))
-        return FocusTimerState(
-            endTime: pausedAt.addingTimeInterval(adjustedDuration),
-            lastDuration: adjustedDuration,
-            isPaused: true,
-            pausedAt: pausedAt,
-            taskName: state.taskName
-        )
+    func shouldAdvance(_ state: FocusTimerState, now: Date) -> Bool {
+        state.status(at: now) == .running && state.remainingTime(at: now) <= 0
     }
 
-    func shouldFinish(_ state: FocusTimerState, now: Date) -> Bool {
-        guard let remaining = state.remainingTime(at: now) else { return false }
-        return remaining <= 0
-    }
+    func advance(
+        _ state: FocusTimerState,
+        now: Date,
+        trigger: FocusTimerAdvanceTrigger = .completed
+    ) -> FocusTimerAdvanceResult {
+        switch state.currentPhase {
+        case .focus:
+            let nextFocusCount: Int
+            let nextPhase: FocusTimerPhase
 
-    func actualDuration(
-        startedAt: Date,
-        endedAt: Date,
-        accumulatedPausedDuration: TimeInterval,
-        state: FocusTimerState
-    ) -> TimeInterval {
-        let inFlightPauseDuration: TimeInterval
-        if state.isPaused, let pausedAt = state.pausedAt {
-            inFlightPauseDuration = endedAt.timeIntervalSince(pausedAt)
-        } else {
-            inFlightPauseDuration = 0
+            if trigger == .completed {
+                nextFocusCount = min(state.cycleFocusCount + 1, state.configuration.longBreakInterval)
+                if nextFocusCount >= state.configuration.longBreakInterval {
+                    nextPhase = .longBreak
+                } else {
+                    nextPhase = .shortBreak
+                }
+            } else {
+                nextFocusCount = state.cycleFocusCount
+                nextPhase = .shortBreak
+            }
+
+            return FocusTimerAdvanceResult(
+                state: makePhaseState(
+                    phase: nextPhase,
+                    cycleFocusCount: nextFocusCount,
+                    configuration: state.configuration,
+                    shouldAutoStart: state.configuration.autoAdvance,
+                    now: now
+                ),
+                completedFocusDuration: trigger == .completed ? state.phaseDuration : nil
+            )
+        case .shortBreak:
+            return FocusTimerAdvanceResult(
+                state: makePhaseState(
+                    phase: .focus,
+                    cycleFocusCount: state.cycleFocusCount,
+                    configuration: state.configuration,
+                    shouldAutoStart: state.configuration.autoAdvance,
+                    now: now
+                ),
+                completedFocusDuration: nil
+            )
+        case .longBreak:
+            return FocusTimerAdvanceResult(
+                state: makePhaseState(
+                    phase: .focus,
+                    cycleFocusCount: 0,
+                    configuration: state.configuration,
+                    shouldAutoStart: state.configuration.autoAdvance,
+                    now: now
+                ),
+                completedFocusDuration: nil
+            )
         }
+    }
 
-        return max(
-            0,
-            endedAt.timeIntervalSince(startedAt) - accumulatedPausedDuration - inFlightPauseDuration
+    private func makePhaseState(
+        phase: FocusTimerPhase,
+        cycleFocusCount: Int,
+        configuration: FocusTimerConfiguration,
+        shouldAutoStart: Bool,
+        now: Date
+    ) -> FocusTimerState {
+        let duration = configuration.duration(for: phase)
+        return FocusTimerState(
+            configuration: configuration,
+            currentPhase: phase,
+            cycleFocusCount: cycleFocusCount,
+            phaseDuration: duration,
+            endTime: shouldAutoStart ? now.addingTimeInterval(duration) : nil,
+            isPaused: false,
+            pausedAt: nil
         )
     }
 }

@@ -1,76 +1,150 @@
 import Foundation
 
-/// 倒计时状态枚举
-enum FocusTimerStatus: Equatable {
-    case idle        // 未设置倒计时
-    case running     // 运行中
-    case paused      // 暂停状态
-    case finished    // 已完成
+enum FocusTimerPhase: String, CaseIterable, Equatable {
+    case focus
+    case shortBreak
+    case longBreak
+
+    var title: String {
+        switch self {
+        case .focus:
+            return "专注时间"
+        case .shortBreak:
+            return "短休息"
+        case .longBreak:
+            return "长休息"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .focus:
+            return "进入一个完整的番茄钟"
+        case .shortBreak:
+            return "给自己一点短暂缓冲"
+        case .longBreak:
+            return "这一轮结束，休息久一点"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .focus:
+            return "target"
+        case .shortBreak:
+            return "cup.and.saucer"
+        case .longBreak:
+            return "bed.double"
+        }
+    }
 }
 
-/// 倒计时状态模型
-/// 核心设计：使用 endTime: Date 作为唯一真实数据源
-struct FocusTimerState {
-    var endTime: Date?
-    var lastDuration: TimeInterval?  // 上次设置的时长（用于 reset）
-    var isPaused: Bool = false       // 是否暂停
-    var pausedAt: Date?              // 暂停时间点
-    var taskName: String = ""        // 当前任务名称
+enum FocusTimerStatus: Equatable {
+    case idle
+    case running
+    case paused
+}
 
-    /// 当前状态
+struct FocusTimerConfiguration: Equatable {
+    var focusDuration: TimeInterval = 25 * 60
+    var shortBreakDuration: TimeInterval = 5 * 60
+    var longBreakDuration: TimeInterval = 15 * 60
+    var longBreakInterval: Int = 4
+    var autoAdvance: Bool = true
+
+    static let `default` = FocusTimerConfiguration()
+
+    func normalized() -> FocusTimerConfiguration {
+        FocusTimerConfiguration(
+            focusDuration: Self.normalizedDuration(focusDuration, fallback: Self.default.focusDuration),
+            shortBreakDuration: Self.normalizedDuration(
+                shortBreakDuration,
+                fallback: Self.default.shortBreakDuration
+            ),
+            longBreakDuration: Self.normalizedDuration(
+                longBreakDuration,
+                fallback: Self.default.longBreakDuration
+            ),
+            longBreakInterval: min(max(longBreakInterval, 1), 10),
+            autoAdvance: autoAdvance
+        )
+    }
+
+    func duration(for phase: FocusTimerPhase) -> TimeInterval {
+        switch phase {
+        case .focus:
+            return focusDuration
+        case .shortBreak:
+            return shortBreakDuration
+        case .longBreak:
+            return longBreakDuration
+        }
+    }
+
+    private static func normalizedDuration(_ value: TimeInterval, fallback: TimeInterval) -> TimeInterval {
+        let rounded = max(60, value.rounded(.down))
+        return rounded.isFinite ? rounded : fallback
+    }
+}
+
+struct FocusTimerState: Equatable {
+    var configuration: FocusTimerConfiguration = .default
+    var currentPhase: FocusTimerPhase = .focus
+    var cycleFocusCount: Int = 0
+    var phaseDuration: TimeInterval = FocusTimerConfiguration.default.focusDuration
+    var endTime: Date?
+    var isPaused: Bool = false
+    var pausedAt: Date?
+
     var status: FocusTimerStatus {
         status(at: Date())
     }
 
-    /// 剩余时间（秒）
-    var remainingTime: TimeInterval? {
+    var remainingTime: TimeInterval {
         remainingTime(at: Date())
     }
 
-    func status(at now: Date) -> FocusTimerStatus {
-        guard let endTime = endTime else { return .idle }
-        if isPaused { return .paused }
-        return endTime > now ? .running : .finished
+    var progressText: String {
+        "\(cycleFocusCount)/\(configuration.longBreakInterval)"
     }
 
-    func remainingTime(at now: Date) -> TimeInterval? {
-        guard let endTime = endTime else { return nil }
-        if isPaused, let pausedAt = pausedAt {
-            // 暂停时，endTime已经被调整为整数秒，直接计算即可
-            return max(0, endTime.timeIntervalSince(pausedAt))
-        }
-        return max(0, endTime.timeIntervalSince(now))
+    var canReset: Bool {
+        status != .idle || currentPhase != .focus || cycleFocusCount > 0
     }
 
-    /// 时间输入是否应锁定
-    var isEditingLocked: Bool {
+    var canSkip: Bool {
         status == .running || status == .paused
     }
 
-    /// 是否允许重置
-    var canReset: Bool {
-        status != .idle
+    func status(at now: Date) -> FocusTimerStatus {
+        if isPaused {
+            return .paused
+        }
+
+        return endTime == nil ? .idle : .running
     }
 
-    /// 重新发布当前状态以触发视图刷新
+    func remainingTime(at now: Date) -> TimeInterval {
+        if isPaused, let pausedAt, let endTime {
+            return max(0, endTime.timeIntervalSince(pausedAt))
+        }
+
+        if let endTime {
+            return max(0, endTime.timeIntervalSince(now))
+        }
+
+        return phaseDuration
+    }
+
     func refreshed() -> FocusTimerState {
         FocusTimerState(
+            configuration: configuration,
+            currentPhase: currentPhase,
+            cycleFocusCount: cycleFocusCount,
+            phaseDuration: phaseDuration,
             endTime: endTime,
-            lastDuration: lastDuration,
             isPaused: isPaused,
-            pausedAt: pausedAt,
-            taskName: taskName
-        )
-    }
-
-    /// 回到 idle 状态，但保留最近一次输入，方便再次开始
-    func idlePreservingInputs() -> FocusTimerState {
-        FocusTimerState(
-            endTime: nil,
-            lastDuration: lastDuration,
-            isPaused: false,
-            pausedAt: nil,
-            taskName: taskName
+            pausedAt: pausedAt
         )
     }
 }

@@ -1,62 +1,43 @@
 import Foundation
 
-/// 统计时间范围
-enum FocusStatisticsScope {
-    case today
-    case week
-    case month
-    case allTime
+enum FocusCalendar {
+    static var analytics: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = .current
+        calendar.timeZone = .current
+        calendar.firstWeekday = 2
+        calendar.minimumDaysInFirstWeek = 4
+        return calendar
+    }
+}
+
+struct FocusStatisticsPeriod: Equatable {
+    var sessionCount: Int = 0
+    var totalDuration: TimeInterval = 0
 }
 
 struct FocusDailyTrendPoint: Identifiable {
     let date: Date
     let totalDuration: TimeInterval
     let sessionCount: Int
-    let completedCount: Int
 
     var id: Date { date }
 }
 
 struct FocusHistoryInsights {
     var recentDailyTrend: [FocusDailyTrendPoint] = []
-    var currentStreak: Int = 0
-    var longestSessionDuration: TimeInterval = 0
 }
 
-/// 专注统计数据模型
-/// 用于展示不同时间范围的统计数据
 struct FocusStatistics {
-    /// 今日累计时长（秒）
-    var todayTotal: TimeInterval = 0
+    var today = FocusStatisticsPeriod()
+    var week = FocusStatisticsPeriod()
+    var month = FocusStatisticsPeriod()
+    var allTime = FocusStatisticsPeriod()
 
-    /// 本周累计时长（秒）
-    var weekTotal: TimeInterval = 0
-
-    /// 本月累计时长（秒）
-    var monthTotal: TimeInterval = 0
-
-    /// 累计总时长（秒）
-    var allTimeTotal: TimeInterval = 0
-
-    /// 会话总数
-    var sessionCount: Int = 0
-
-    /// 已完成会话数
-    var completedCount: Int = 0
-
-    var completionRate: Double {
-        guard sessionCount > 0 else { return 0 }
-        return Double(completedCount) / Double(sessionCount)
+    var isEmpty: Bool {
+        allTime.sessionCount == 0
     }
 
-    var averageSessionDuration: TimeInterval {
-        guard sessionCount > 0 else { return 0 }
-        return allTimeTotal / Double(sessionCount)
-    }
-
-    /// 格式化时长为可读字符串
-    /// - Parameter interval: 时长（秒）
-    /// - Returns: 格式化的时间字符串
     static func formatDuration(_ interval: TimeInterval) -> String {
         FocusDisplayFormatter.duration(interval)
     }
@@ -116,6 +97,27 @@ enum FocusDisplayFormatter {
         }
 
         return "0分钟"
+    }
+
+    static func chartDurationAxisLabel(minutes: Double) -> String {
+        let roundedMinutes = max(0, Int(minutes.rounded()))
+        let hours = roundedMinutes / 60
+        let remainingMinutes = roundedMinutes % 60
+
+        if hours > 0, remainingMinutes > 0 {
+            return "\(hours)小时\(remainingMinutes)分"
+        }
+
+        if hours > 0 {
+            return "\(hours)小时"
+        }
+
+        return "\(remainingMinutes)分"
+    }
+
+    static func minutes(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval.rounded(.down)) / 60
+        return "\(minutes)分钟"
     }
 
     static func date(_ date: Date) -> String {
