@@ -52,10 +52,28 @@ enum FocusDisplayFormatter {
         return formatter
     }()
 
+    private static let preciseDateTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter
+    }()
+
     private static let shortTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
         formatter.timeStyle = .short
+        return formatter
+    }()
+
+    private static let hourMinuteFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        formatter.dateFormat = "HH:mm"
         return formatter
     }()
 
@@ -99,6 +117,31 @@ enum FocusDisplayFormatter {
         return "0分钟"
     }
 
+    static func compactDuration(_ interval: TimeInterval) -> String {
+        let clampedInterval = max(0, Int(interval.rounded(.down)))
+        let hours = clampedInterval / 3600
+        let minutes = (clampedInterval % 3600) / 60
+        let seconds = clampedInterval % 60
+
+        if hours > 0, minutes > 0 {
+            return "\(hours)h\(minutes)m"
+        }
+
+        if hours > 0 {
+            return "\(hours)h"
+        }
+
+        if minutes > 0 {
+            return "\(minutes)m"
+        }
+
+        if seconds > 0 {
+            return "\(seconds)s"
+        }
+
+        return "0m"
+    }
+
     static func chartDurationAxisLabel(minutes: Double) -> String {
         let roundedMinutes = max(0, Int(minutes.rounded()))
         let hours = roundedMinutes / 60
@@ -124,8 +167,20 @@ enum FocusDisplayFormatter {
         mediumDateFormatter.string(from: date)
     }
 
+    static func preciseDate(_ date: Date) -> String {
+        String(preciseDateTimeFormatter.string(from: date).prefix(10))
+    }
+
     static func time(_ date: Date) -> String {
         shortTimeFormatter.string(from: date)
+    }
+
+    static func hourMinute(_ date: Date) -> String {
+        hourMinuteFormatter.string(from: date)
+    }
+
+    static func preciseDateTime(_ date: Date) -> String {
+        preciseDateTimeFormatter.string(from: date)
     }
 
     static func weekday(_ date: Date) -> String {

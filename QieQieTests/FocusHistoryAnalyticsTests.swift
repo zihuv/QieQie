@@ -9,6 +9,76 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 90), "1小时30分")
     }
 
+    func testCompactDurationFormatsDashboardValues() {
+        XCTAssertEqual(FocusDisplayFormatter.compactDuration(0), "0m")
+        XCTAssertEqual(FocusDisplayFormatter.compactDuration(25 * 60), "25m")
+        XCTAssertEqual(FocusDisplayFormatter.compactDuration(60 * 60), "1h")
+        XCTAssertEqual(FocusDisplayFormatter.compactDuration((2 * 60 + 5) * 60), "2h5m")
+    }
+
+    func testPreciseDateTimeUsesYearMonthDayAnd24HourTime() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let date = makeDate(year: 2026, month: 5, day: 3, hour: 12, minute: 12, calendar: calendar)
+
+        XCTAssertEqual(FocusDisplayFormatter.preciseDateTime(date), "2026-05-03 12:12")
+    }
+
+    func testStatisticsOverviewGroupingSortsDaysDescendingAndSessionsDescending() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let sessions = [
+            makeSession(
+                taskName: "second-day-late",
+                startTime: makeDate(year: 2026, month: 5, day: 3, hour: 18, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 3, hour: 18, minute: 25, calendar: calendar),
+                duration: 1500,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "first-day-early",
+                startTime: makeDate(year: 2026, month: 5, day: 2, hour: 9, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 2, hour: 9, minute: 25, calendar: calendar),
+                duration: 1500,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "second-day-early",
+                startTime: makeDate(year: 2026, month: 5, day: 3, hour: 8, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 3, hour: 8, minute: 25, calendar: calendar),
+                duration: 1500,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "ignored",
+                startTime: makeDate(year: 2026, month: 5, day: 4, hour: 9, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 4, hour: 9, minute: 25, calendar: calendar),
+                duration: 1500,
+                isCompleted: false
+            )
+        ]
+
+        let sections = StatisticsOverviewGrouping.sections(from: sessions, calendar: calendar)
+
+        XCTAssertEqual(sections.map { FocusDisplayFormatter.preciseDate($0.date) }, ["2026-05-03", "2026-05-02"])
+        XCTAssertEqual(sections[0].sessions.map(\.taskName), ["second-day-late", "second-day-early"])
+        XCTAssertEqual(sections[1].sessions.map(\.taskName), ["first-day-early"])
+    }
+
+    func testStatisticsOverviewGroupingFormatsTimeRangeIn24HourClock() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let session = makeSession(
+            startTime: makeDate(year: 2026, month: 5, day: 3, hour: 9, minute: 5, calendar: calendar),
+            endTime: makeDate(year: 2026, month: 5, day: 3, hour: 9, minute: 45, calendar: calendar),
+            duration: 40 * 60,
+            isCompleted: true
+        )
+
+        XCTAssertEqual(StatisticsOverviewGrouping.timeRangeText(for: session), "09:05 - 09:45")
+    }
+
     func testAggregateStatisticsOnlyCountsCompletedFocusSessionsAcrossScopes() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
@@ -103,13 +173,14 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
     }
 
     private func makeSession(
+        taskName: String = "专注",
         startTime: Date,
         endTime: Date,
         duration: TimeInterval,
         isCompleted: Bool
     ) -> FocusSession {
         FocusSession(
-            taskName: "专注",
+            taskName: taskName,
             startTime: startTime,
             endTime: endTime,
             duration: duration,

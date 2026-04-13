@@ -154,6 +154,46 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
+    func testStatisticsOverviewPanelShowsSummaryAndRecentRecord() throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let historyManager = FocusHistoryManager(modelContainer: container)
+        let completedAt = Date(timeIntervalSinceReferenceDate: 10_000)
+        historyManager.recordCompletedFocus(
+            duration: 40 * 60,
+            taskName: "毕设",
+            completedAt: completedAt
+        )
+
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: UserDefaults(suiteName: UUID().uuidString)!
+        )
+        let host = NSHostingController(
+            rootView: SettingsPopover(
+                focusTimerManager: manager,
+                initialPanel: .statistics,
+                onOpenStatistics: {}
+            )
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.statisticsSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+
+        XCTAssertTrue(recognizedText.contains("今日番茄"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("总专注时长"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("毕设"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
     func testBreakCountdownUsesGreenStatusBarTint() {
         XCTAssertNil(StatusBarManager.countdownTintColor(for: .focus))
         XCTAssertTrue(StatusBarManager.countdownTintColor(for: .shortBreak)?.isEqual(NSColor.systemGreen) == true)
@@ -230,12 +270,16 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertEqual(SettingsPopoverLayout.mainSize.height, 220)
         XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, 344)
         XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, 408)
+        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.width, 392)
+        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.height, 500)
         XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, 480)
         XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, 420)
         XCTAssertEqual(StatisticsWindowLayout.minSize.width, 440)
         XCTAssertEqual(StatisticsWindowLayout.minSize.height, 380)
         XCTAssertLessThan(SettingsPopoverLayout.mainSize.width, SettingsPopoverLayout.settingsSize.width)
         XCTAssertLessThan(SettingsPopoverLayout.mainSize.height, SettingsPopoverLayout.settingsSize.height)
+        XCTAssertGreaterThan(SettingsPopoverLayout.statisticsSize.width, SettingsPopoverLayout.settingsSize.width)
+        XCTAssertGreaterThan(SettingsPopoverLayout.statisticsSize.height, SettingsPopoverLayout.settingsSize.height)
         XCTAssertGreaterThan(StatisticsWindowLayout.defaultSize.width, SettingsPopoverLayout.settingsSize.width)
     }
 
@@ -281,8 +325,28 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertEqual(unwrappedSettingsReportedSize.width, SettingsPopoverLayout.settingsSize.width, accuracy: 0.5)
         XCTAssertEqual(unwrappedSettingsReportedSize.height, SettingsPopoverLayout.settingsSize.height, accuracy: 0.5)
 
+        var statisticsReportedSize: CGSize?
+        let statisticsHost = NSHostingController(
+            rootView: SettingsPopover(
+                focusTimerManager: manager,
+                initialPanel: .statistics,
+                onPreferredSizeChange: { statisticsReportedSize = $0 }
+            )
+        )
+        let statisticsWindow = makeWindow(size: SettingsPopoverLayout.statisticsSize)
+        statisticsWindow.contentViewController = statisticsHost
+        statisticsWindow.makeKeyAndOrderFront(nil)
+        _ = statisticsHost.view
+        statisticsHost.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let unwrappedStatisticsReportedSize = try XCTUnwrap(statisticsReportedSize)
+        XCTAssertEqual(unwrappedStatisticsReportedSize.width, SettingsPopoverLayout.statisticsSize.width, accuracy: 0.5)
+        XCTAssertEqual(unwrappedStatisticsReportedSize.height, SettingsPopoverLayout.statisticsSize.height, accuracy: 0.5)
+
         mainWindow.orderOut(nil)
         settingsWindow.orderOut(nil)
+        statisticsWindow.orderOut(nil)
     }
 
     func testStatisticsEntryAppearsWhenWindowActionIsAvailable() throws {

@@ -101,6 +101,28 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(sessions.first?.taskName, "设计评审")
     }
 
+    func testProcessTimerTickRecordsCompletedFocusWithTimeRange() throws {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let historyManager = try makeHistoryManager()
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
+
+        manager.startCurrentPhase()
+
+        clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
+        manager.processTimerTick()
+
+        let session = try XCTUnwrap(historyManager.getAllSessions().first)
+        XCTAssertEqual(session.duration, 25 * 60)
+        XCTAssertEqual(session.endTime, clock.now())
+        XCTAssertEqual(session.startTime, clock.now().addingTimeInterval(-(25 * 60)))
+    }
+
     func testProcessTimerTickLeavesBreakIdleWhenAutoBreakIsDisabled() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()

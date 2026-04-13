@@ -3,6 +3,7 @@ import SwiftUI
 enum SettingsPopoverInitialPanel {
     case main
     case settings
+    case statistics
 }
 
 enum SettingsPopoverLayout {
@@ -10,6 +11,7 @@ enum SettingsPopoverLayout {
     static let mainEstimatedHeight: CGFloat = 220
     static let mainSize = CGSize(width: mainWidth, height: mainEstimatedHeight)
     static let settingsSize = CGSize(width: 344, height: 408)
+    static let statisticsSize = CGSize(width: 392, height: 500)
 
     static func fittedMainSize(for measuredSize: CGSize) -> CGSize {
         CGSize(
@@ -37,6 +39,7 @@ enum FocusTimerAccessibilityID {
         static let intervalField = "settingsPopover.intervalField"
         static let autoStartNextFocusToggle = "settingsPopover.autoStartNextFocusToggle"
         static let autoStartBreakToggle = "settingsPopover.autoStartBreakToggle"
+        static let statisticsDetailButton = "settingsPopover.statisticsDetailButton"
     }
 
     enum StatusBar {
@@ -49,6 +52,7 @@ struct SettingsPopover: View {
     private enum Panel {
         case main
         case settings
+        case statistics
     }
 
     @ObservedObject var focusTimerManager: FocusTimerManager
@@ -61,6 +65,7 @@ struct SettingsPopover: View {
     @State private var autoStartBreak = true
     @State private var autoStartNextFocus = true
     @State private var dashboardStats = FocusStatistics()
+    @State private var recentSessions: [FocusSession] = []
     @State private var mainContentSize = SettingsPopoverLayout.mainSize
     private let onPreferredSizeChange: ((CGSize) -> Void)?
     private let onOpenStatistics: (() -> Void)?
@@ -80,6 +85,8 @@ struct SettingsPopover: View {
             panelValue = .main
         case .settings:
             panelValue = .settings
+        case .statistics:
+            panelValue = .statistics
         }
         _panel = State(initialValue: panelValue)
     }
@@ -91,6 +98,8 @@ struct SettingsPopover: View {
                 mainContent
             case .settings:
                 settingsContent
+            case .statistics:
+                statisticsContent
             }
         }
         .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.root)
@@ -109,6 +118,9 @@ struct SettingsPopover: View {
             refreshStatistics()
         }
         .onChange(of: panel) { _, _ in
+            if panel == .statistics {
+                refreshStatistics()
+            }
             reportPreferredSize()
         }
     }
@@ -221,6 +233,37 @@ struct SettingsPopover: View {
         }
     }
 
+    private var statisticsContent: some View {
+        VStack(spacing: 0) {
+            PopoverHeaderBar(
+                title: "统计",
+                backAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.backButton,
+                onBack: { panel = .main }
+            ) {
+                Button(action: openStatisticsWindow) {
+                    Text("详情")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .disabled(!canOpenStatisticsDetail)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsDetailButton)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+
+            StatisticsOverviewView(
+                statistics: dashboardStats,
+                recentSessions: Array(recentSessions.prefix(30))
+            )
+            .padding(.top, 4)
+        }
+        .frame(
+            width: SettingsPopoverLayout.statisticsSize.width,
+            height: SettingsPopoverLayout.statisticsSize.height,
+            alignment: .top
+        )
+    }
+
     private func headerRow(title: String, showsBack: Bool) -> some View {
         PopoverHeaderBar(
             title: title,
@@ -242,12 +285,12 @@ struct SettingsPopover: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.settingsButton)
 
-                Button(action: openStatisticsWindow) {
+                Button(action: showStatisticsOverview) {
                     Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 13))
                 }
                 .buttonStyle(.plain)
-                .disabled(!canOpenStatistics)
+                .disabled(!canShowStatistics)
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsButton)
             }
         }
@@ -258,7 +301,7 @@ struct SettingsPopover: View {
             statisticsRow(title: "今日", period: dashboardStats.today)
             statisticsRow(title: "本周", period: dashboardStats.week)
 
-            Button(action: openStatisticsWindow) {
+            Button(action: showStatisticsOverview) {
                 HStack(spacing: 4) {
                     Image(systemName: "clock.arrow.circlepath")
                     Text("查看统计")
@@ -267,7 +310,7 @@ struct SettingsPopover: View {
             }
             .buttonStyle(.plain)
             .foregroundColor(.accentColor)
-            .disabled(!canOpenStatistics)
+            .disabled(!canShowStatistics)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -474,6 +517,7 @@ struct SettingsPopover: View {
 
     private func refreshStatistics() {
         dashboardStats = focusTimerManager.focusHistoryManager?.getDashboardStatistics() ?? FocusStatistics()
+        recentSessions = focusTimerManager.focusHistoryManager?.getAllSessions() ?? []
     }
 
     private func mainButtonAction() {
@@ -526,12 +570,22 @@ struct SettingsPopover: View {
         )
     }
 
-    private var canOpenStatistics: Bool {
-        focusTimerManager.focusHistoryManager != nil && onOpenStatistics != nil
+    private var canShowStatistics: Bool {
+        focusTimerManager.focusHistoryManager != nil
+    }
+
+    private var canOpenStatisticsDetail: Bool {
+        canShowStatistics && onOpenStatistics != nil
+    }
+
+    private func showStatisticsOverview() {
+        guard canShowStatistics else { return }
+        refreshStatistics()
+        panel = .statistics
     }
 
     private func openStatisticsWindow() {
-        guard canOpenStatistics else { return }
+        guard canOpenStatisticsDetail else { return }
         onOpenStatistics?()
     }
 
@@ -545,6 +599,8 @@ struct SettingsPopover: View {
             return mainContentSize
         case .settings:
             return SettingsPopoverLayout.settingsSize
+        case .statistics:
+            return SettingsPopoverLayout.statisticsSize
         }
     }
 }

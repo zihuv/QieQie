@@ -24,11 +24,12 @@ final class FocusHistoryManager: ObservableObject {
         taskName: String = "专注",
         completedAt: Date = Date()
     ) {
+        let clampedDuration = max(0, duration)
         let session = FocusSession(
             taskName: normalizedTaskName(taskName),
-            startTime: completedAt,
+            startTime: completedAt.addingTimeInterval(-clampedDuration),
             endTime: completedAt,
-            duration: duration,
+            duration: clampedDuration,
             isCompleted: true
         )
         modelContext.insert(session)
