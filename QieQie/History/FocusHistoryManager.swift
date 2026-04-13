@@ -6,6 +6,7 @@ import SwiftData
 struct FocusHistorySnapshot {
     let groupedSessions: [(date: Date, sessions: [FocusSession])]
     let totalStatistics: FocusStatistics
+    let insights: FocusHistoryInsights
 }
 
 /// 专注历史记录管理器
@@ -90,7 +91,7 @@ final class FocusHistoryManager: ObservableObject {
 
     /// 获取设置面板展示所需的统计信息
     func getDashboardStatistics() -> FocusStatistics {
-        aggregateStatistics(from: getAllSessions())
+        FocusHistoryAnalytics.aggregateStatistics(from: getAllSessions())
     }
 
     /// 获取历史记录所需的全部数据
@@ -98,7 +99,8 @@ final class FocusHistoryManager: ObservableObject {
         let sessions = getAllSessions()
         return FocusHistorySnapshot(
             groupedSessions: groupSessionsByDate(sessions),
-            totalStatistics: aggregateStatistics(from: sessions)
+            totalStatistics: FocusHistoryAnalytics.aggregateStatistics(from: sessions),
+            insights: FocusHistoryAnalytics.buildInsights(from: sessions)
         )
     }
 
@@ -110,7 +112,7 @@ final class FocusHistoryManager: ObservableObject {
         )
 
         do {
-            return aggregateStatistics(from: try modelContext.fetch(descriptor))
+            return FocusHistoryAnalytics.aggregateStatistics(from: try modelContext.fetch(descriptor))
         } catch {
             logger.error("Failed to fetch statistics: \(error.localizedDescription, privacy: .public)")
             return FocusStatistics()
@@ -150,24 +152,6 @@ final class FocusHistoryManager: ObservableObject {
         case .allTime:
             return Date.distantPast
         }
-    }
-
-    private func aggregateStatistics(from sessions: [FocusSession]) -> FocusStatistics {
-        var statistics = FocusStatistics()
-        let calendar = Calendar.current
-        let now = Date()
-        let startOfDay = calendar.startOfDay(for: now)
-        let startOfWeek = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
-        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-
-        statistics.sessionCount = sessions.count
-        statistics.completedCount = sessions.filter { $0.isCompleted }.count
-        statistics.allTimeTotal = sessions.reduce(0) { $0 + $1.duration }
-        statistics.todayTotal = sessions.filter { $0.startTime >= startOfDay }.reduce(0) { $0 + $1.duration }
-        statistics.weekTotal = sessions.filter { $0.startTime >= startOfWeek }.reduce(0) { $0 + $1.duration }
-        statistics.monthTotal = sessions.filter { $0.startTime >= startOfMonth }.reduce(0) { $0 + $1.duration }
-
-        return statistics
     }
 
     private func groupSessionsByDate(_ sessions: [FocusSession]) -> [(date: Date, sessions: [FocusSession])] {

@@ -25,6 +25,8 @@
 		E1031 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1030; };
 		E1033 /* FocusTimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1032; };
 		E1035 /* SettingsPopoverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1034; };
+		E1037 /* FocusHistoryAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1036; };
+		E1039 /* FocusHistoryAnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1038; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +58,8 @@
 		E1030 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
 		E1032 /* FocusTimerManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerManagerTests.swift; sourceTree = "<group>"; };
 		E1034 /* SettingsPopoverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopoverTests.swift; sourceTree = "<group>"; };
+		E1036 /* FocusHistoryAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryAnalytics.swift; sourceTree = "<group>"; };
+		E1038 /* FocusHistoryAnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryAnalyticsTests.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2001 /* QieQie.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QieQie.entitlements; sourceTree = "<group>"; };
 		E9000 /* QieQie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QieQie.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -129,6 +133,7 @@
 			children = (
 				E1014,
 				E1016,
+				E1036,
 				E1018,
 				E1020,
 			);
@@ -157,6 +162,7 @@
 		E5002 /* QieQieTests */ = {
 			isa = PBXGroup;
 			children = (
+				E1038,
 				E1032,
 				E1026,
 				E1028,
@@ -271,6 +277,7 @@
 				E1013,
 				E1015,
 				E1017,
+				E1037,
 				E1019,
 				E1021,
 				E1023,
@@ -282,6 +289,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1039 /* FocusHistoryAnalyticsTests.swift in Sources */,
 				E1033 /* FocusTimerManagerTests.swift in Sources */,
 				E1027 /* FocusTimerEngineTests.swift in Sources */,
 				E1029 /* FocusTimerDurationParserTests.swift in Sources */,

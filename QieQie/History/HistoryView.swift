@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 /// 历史记录视图
@@ -13,6 +14,8 @@ struct HistoryView: View {
 
     /// 总统计
     @State private var totalStats: FocusStatistics = FocusStatistics()
+
+    @State private var historyInsights = FocusHistoryInsights()
 
     /// 要删除的会话
     @State private var sessionToDelete: FocusSession?
@@ -42,7 +45,7 @@ struct HistoryView: View {
             .controlSize(.large)
         }
         .padding(16)
-        .frame(width: 300, height: 380)
+        .frame(width: 360, height: 540)
         .onAppear {
             loadData()
         }
@@ -67,37 +70,22 @@ struct HistoryView: View {
 
     /// 统计信息
     private var statisticsSection: some View {
-        HStack(spacing: 16) {
-            VStack(spacing: 2) {
-                Text("\(totalStats.sessionCount)")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text("总次数")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+        VStack(spacing: 10) {
+            HStack(spacing: 8) {
+                summaryCard(title: "总次数", value: "\(totalStats.sessionCount)", tint: .blue)
+                summaryCard(title: "总时长", value: FocusStatistics.formatDuration(totalStats.allTimeTotal), tint: .orange)
+                summaryCard(title: "已完成", value: "\(totalStats.completedCount)", tint: .green)
             }
 
-            VStack(spacing: 2) {
-                Text(FocusStatistics.formatDuration(totalStats.allTimeTotal))
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text("总时长")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
+            trendSection
 
-            VStack(spacing: 2) {
-                Text("\(totalStats.completedCount)")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                Text("已完成")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+            LazyVGrid(columns: insightGridColumns, spacing: 8) {
+                insightCard(title: "完成率", value: FocusDisplayFormatter.percentage(totalStats.completionRate))
+                insightCard(title: "平均每次", value: FocusStatistics.formatDuration(totalStats.averageSessionDuration))
+                insightCard(title: "最长单次", value: FocusStatistics.formatDuration(historyInsights.longestSessionDuration))
+                insightCard(title: "连续记录", value: "\(historyInsights.currentStreak)天")
             }
         }
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(8)
     }
 
     /// 历史记录列表
@@ -184,6 +172,7 @@ struct HistoryView: View {
         let snapshot = historyManager.getHistorySnapshot()
         groupedSessions = snapshot.groupedSessions
         totalStats = snapshot.totalStatistics
+        historyInsights = snapshot.insights
     }
 
     /// 删除会话
@@ -193,5 +182,137 @@ struct HistoryView: View {
         if historyManager.deleteSession(session) {
             loadData()
         }
+    }
+
+    private var insightGridColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8)
+        ]
+    }
+
+    private var trendSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("近 7 天趋势")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer()
+                Text("累计 \(FocusStatistics.formatDuration(recentTrendTotal))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            if totalStats.sessionCount == 0 {
+                Text("开始一次专注后，这里会显示最近 7 天的变化。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 18)
+            } else {
+                Chart {
+                    ForEach(historyInsights.recentDailyTrend) { point in
+                        BarMark(
+                            x: .value("日期", point.date, unit: .day),
+                            y: .value("时长", point.totalDuration)
+                        )
+                        .foregroundStyle(barColor(for: point.date))
+                    }
+
+                    if averageRecentDailyDuration > 0 {
+                        RuleMark(y: .value("日均", averageRecentDailyDuration))
+                            .foregroundStyle(Color.secondary.opacity(0.35))
+                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    }
+                }
+                .chartLegend(.hidden)
+                .chartYAxis(.hidden)
+                .chartXAxis {
+                    AxisMarks(values: historyInsights.recentDailyTrend.map(\.date)) { value in
+                        AxisTick()
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(FocusDisplayFormatter.weekday(date))
+                            }
+                        }
+                    }
+                }
+                .chartPlotStyle { plotArea in
+                    plotArea
+                        .background(Color(NSColor.controlBackgroundColor).opacity(0.18))
+                        .cornerRadius(8)
+                }
+                .frame(height: 120)
+
+                Text(trendSummaryText)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.4))
+        .cornerRadius(8)
+    }
+
+    private func summaryCard(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.system(size: 15, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(tint.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(tint.opacity(0.12), lineWidth: 1)
+        )
+        .cornerRadius(8)
+    }
+
+    private func insightCard(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.system(size: 14, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
+        .cornerRadius(8)
+    }
+
+    private var recentTrendTotal: TimeInterval {
+        historyInsights.recentDailyTrend.reduce(0) { $0 + $1.totalDuration }
+    }
+
+    private var averageRecentDailyDuration: TimeInterval {
+        guard !historyInsights.recentDailyTrend.isEmpty else { return 0 }
+        return recentTrendTotal / Double(historyInsights.recentDailyTrend.count)
+    }
+
+    private var recentTrendSessionCount: Int {
+        historyInsights.recentDailyTrend.reduce(0) { $0 + $1.sessionCount }
+    }
+
+    private var recentTrendCompletedCount: Int {
+        historyInsights.recentDailyTrend.reduce(0) { $0 + $1.completedCount }
+    }
+
+    private var trendSummaryText: String {
+        let averageText = FocusStatistics.formatDuration(averageRecentDailyDuration)
+        return "日均 \(averageText)，近 7 天完成 \(recentTrendCompletedCount)/\(recentTrendSessionCount) 次。"
+    }
+
+    private func barColor(for date: Date) -> Color {
+        Calendar.current.isDateInToday(date) ? .accentColor : .accentColor.opacity(0.35)
     }
 }

@@ -8,6 +8,21 @@ enum FocusStatisticsScope {
     case allTime
 }
 
+struct FocusDailyTrendPoint: Identifiable {
+    let date: Date
+    let totalDuration: TimeInterval
+    let sessionCount: Int
+    let completedCount: Int
+
+    var id: Date { date }
+}
+
+struct FocusHistoryInsights {
+    var recentDailyTrend: [FocusDailyTrendPoint] = []
+    var currentStreak: Int = 0
+    var longestSessionDuration: TimeInterval = 0
+}
+
 /// 专注统计数据模型
 /// 用于展示不同时间范围的统计数据
 struct FocusStatistics {
@@ -28,6 +43,16 @@ struct FocusStatistics {
 
     /// 已完成会话数
     var completedCount: Int = 0
+
+    var completionRate: Double {
+        guard sessionCount > 0 else { return 0 }
+        return Double(completedCount) / Double(sessionCount)
+    }
+
+    var averageSessionDuration: TimeInterval {
+        guard sessionCount > 0 else { return 0 }
+        return allTimeTotal / Double(sessionCount)
+    }
 
     /// 格式化时长为可读字符串
     /// - Parameter interval: 时长（秒）
@@ -50,6 +75,12 @@ enum FocusDisplayFormatter {
         let formatter = DateFormatter()
         formatter.dateStyle = .none
         formatter.timeStyle = .short
+        return formatter
+    }()
+
+    private static let weekdayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("E")
         return formatter
     }()
 
@@ -93,5 +124,13 @@ enum FocusDisplayFormatter {
 
     static func time(_ date: Date) -> String {
         shortTimeFormatter.string(from: date)
+    }
+
+    static func weekday(_ date: Date) -> String {
+        weekdayFormatter.string(from: date)
+    }
+
+    static func percentage(_ value: Double) -> String {
+        String(format: "%.0f%%", value * 100)
     }
 }
