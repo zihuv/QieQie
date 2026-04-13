@@ -1,6 +1,6 @@
 ---
 name: test-and-verify
-description: "Use when fixing bugs, validating behavior changes, or reviewing whether a code change actually works, including macOS menu bar apps, popovers, and Accessibility-based UI verification. This skill enforces a verification-first workflow: reproduce the issue, define the acceptance check, make the change, run the most direct available test path, and report exactly what was and was not verified."
+description: "Use when fixing bugs, validating behavior changes, or checking whether a code change actually works, especially for macOS menu bar apps, SwiftUI/AppKit popovers, layout regressions, and Accessibility-based UI verification. This skill enforces a verification-first workflow: define the claim, reproduce or establish a baseline, choose the narrowest proof path, run it after the change, and report exactly what was and was not verified."
 ---
 
 # Test And Verify
@@ -9,99 +9,93 @@ Use this skill when correctness matters more than code churn. The default stance
 
 ## Core Rules
 
+- Write down the claim before editing: observed behavior, expected behavior, and the acceptance check.
 - Reproduce first when the user reports a runtime or interaction bug.
 - Prefer the narrowest test that proves the claim.
 - If a change affects UI or event timing, verify the transition points, not just the final steady state.
 - Separate logic evidence from UI evidence. If they disagree, keep debugging.
 - For menu bar, status bar, or popover UI bugs, prefer state probes and Accessibility inspection over pointer choreography.
+- For layout and spacing regressions, verify visibility, clipping, scrolling, and abnormal empty space, not just text presence.
 - Never say a bug is fixed unless at least one realistic validation path was executed after the change.
 - State plainly what was tested, what passed, and what remains unverified.
 
+## Name The Claim
+
+Capture the target behavior in three lines before making changes:
+
+- Observed: what is happening now.
+- Expected: what should happen instead.
+- Acceptance check: the exact path that will prove the fix.
+
+If reproduction is not possible, say so explicitly and narrow the claim to the highest-signal path you can validate.
+
+## Validation Layers
+
+Prefer these layers in order, stopping at the smallest layer that can prove the claim:
+
+1. Unit tests for deterministic logic, state transitions, validation rules, and calculations.
+2. Focused harnesses for SwiftUI/AppKit view state, layout, focus, and enablement.
+3. Integrated UI checks for menu bar items, popovers, and transient windows using Accessibility or direct state probes.
+4. Local build and deterministic app smoke checks for wiring and product-level behavior.
+5. Manual verification only as a supplement when the above are insufficient.
+
 ## Default Workflow
 
-1. Clarify the target behavior.
-   Write down the observed behavior, the expected behavior, and the exact acceptance check.
-2. Reproduce the issue.
+1. Define the claim.
+   Record observed behavior, expected behavior, and the acceptance check.
+2. Reproduce or capture a baseline.
    Use the most direct available route: existing tests, a focused harness, a temporary probe, a local build, or an interactive flow.
-3. Capture a baseline.
-   Confirm the bug exists before editing, or state explicitly that reproduction was not possible.
+3. Choose the narrowest proof path.
+   Pick the smallest layer that can prove or disprove the claim with minimal ambiguity.
 4. Make the smallest change that could fix it.
    Avoid broad refactors until the failure mode is understood.
-5. Re-run the direct reproduction path.
-   This is the primary proof that the fix works.
+5. Re-run the primary proof path after the change.
+   This is the main evidence.
 6. Run adjacent regression checks.
-   Test nearby states, inverse transitions, and entry/exit paths that are likely to break from the same change.
-7. Report evidence.
-   Distinguish clearly between executed checks and assumptions.
+   Test nearby states, inverse transitions, and likely collateral paths.
+7. Report evidence and gaps.
+   Distinguish executed checks, observed outcomes, and what remains unverified.
 
 ## Choosing a Validation Path
 
-Prefer this order, adjusted to the task:
-
-- Existing automated tests that directly cover the failing behavior.
-- A focused test or local harness created for the bug.
-- A temporary probe that inspects the exact state transition or output.
-- A build plus a deterministic smoke path.
-- Manual verification only when the above are unavailable or insufficient.
-
-If a bug is timing-sensitive, focus-sensitive, or stateful, sample more than one moment:
-
-- Immediately after the triggering action.
-- Shortly after the event loop turns.
-- After the next expected async or timer boundary.
-
-When several options are available, choose the smallest layer that can prove the claim:
-
 - Pure logic and calculations: prefer unit tests.
-- View state, focus, timing, control enablement, and value overwrite behavior: prefer a focused local harness.
-- Menu bar items, popovers, transient windows, and integrated UI state: prefer Accessibility-based checks.
+- View state, focus, timing, control enablement, text visibility, and value overwrite behavior: prefer a focused local harness.
+- Layout regressions in SwiftUI/AppKit views: host the view at the real production size and verify clipping, spacing, and scroll behavior.
+- Menu bar items, popovers, transient windows, and integrated UI state: prefer Accessibility-based checks or direct state probes.
 - Whole-app wiring and packaging: use a local build and a deterministic smoke path.
 
-## Preferred Test Methods
+If a bug is timing-sensitive, focus-sensitive, or stateful, sample more than one checkpoint:
 
-Choose the most direct method that proves the claim with the least ambiguity.
-
-- Existing automated tests when they directly cover the reported behavior.
-- Unit tests for pure logic, state transitions, validation rules, and math.
-- A focused local harness when the full app is heavier than the bug requires.
-- A temporary probe when the key question is a state transition, timing edge, or overwrite path.
-- Build plus a deterministic smoke path when the behavior depends on the integrated app.
-- Accessibility inspection and Accessibility actions for UI state, focus, enabled state, popovers, menus, and status items.
-- Keyboard-driven or system-driven interaction when it is more deterministic than pointer interaction.
-
-For timing or async bugs, test at more than one checkpoint:
-
-- immediately after the trigger,
-- after the next main-loop turn,
-- after the next expected timer, callback, or async boundary.
-
-## Recommended Layering
-
-When shaping a long-lived verification strategy, prefer this layering:
-
-1. Unit tests for deterministic logic.
-2. Focused harnesses for UI timing, focus, enablement, and binding behavior.
-3. Accessibility-driven checks for integrated macOS UI surfaces such as status items, menus, and popovers.
-4. Local build-based smoke verification for the actual app product.
-5. Manual verification only as a supplement.
+- Immediately after the trigger.
+- After the next main-loop turn.
+- After the next expected timer, callback, or async boundary.
 
 ## macOS Menu Bar and Popover Checks
 
 Use this path when the bug involves a menu bar app, status item, transient window, or popover.
 
-- Never simulate mouse movement or pointer clicks as the primary validation method.
-- Do not use coordinate-based event injection when Accessibility actions or direct state probes can answer the question.
-- Prefer inspecting actual Accessibility attributes such as role, title, value, enabled, focused, selected, and available actions.
-- If a popover or menu must open, prefer an Accessibility press action or another deterministic system-level action over cursor automation.
-- Treat screenshots as supporting evidence only after state and Accessibility checks.
-
 Default order for this class of bug:
 
 1. Inspect the implementation and identify the state owner and the view layer that renders it.
 2. Verify the state transition without UI if possible.
-3. Build the app or host the affected view in a focused local harness.
-4. Verify the rendered result or control state through Accessibility or direct view inspection.
-5. If logic and UI disagree, assume a presentation or sync bug until proven otherwise.
+3. Host the affected SwiftUI/AppKit view in a focused harness at the production size.
+4. Verify the rendered result or control state through direct view inspection, OCR, or Accessibility as appropriate.
+5. If needed, build the app and verify integrated behavior through Accessibility-based inspection and actions.
+6. If logic and UI disagree, assume a presentation or sync bug until proven otherwise.
+
+Practical tactics for this repository shape:
+
+- Use `NSHostingController` plus `NSWindow` when verifying SwiftUI popover content, and size the harness to the real popover dimensions.
+- If production popover size changes, update the harness size in tests at the same time.
+- For text presence or absence in rendered output, OCR is acceptable when view-tree assertions are weaker.
+- For layout fixes, explicitly check header visibility, back-button visibility, scroll reachability, and absence of oversized bottom whitespace.
+- For status bar visuals driven by deterministic mappings, unit-test the mapping helper and only add integrated render checks if ambiguity remains.
+
+Prefer these commands when relevant:
+
+```bash
+xcodebuild -project QieQie.xcodeproj -scheme QieQie -configuration Debug -derivedDataPath build test
+```
 
 ## How To Trigger UI Actions
 
@@ -128,18 +122,15 @@ Do not default to fragile or indirect validation when a more direct path exists.
 - Do not broaden to a full end-to-end flow when a focused probe can prove or disprove the bug faster and more reliably.
 - Do not silently skip verification because reproduction is awkward; narrow the claim and say exactly what was not tested.
 
-## For UI and Interaction Bugs
+## Layout And Visual Regression Checks
 
-- Verify both the underlying state and the rendered or interactive result.
-- Check whether a control is only visually changed or actually disabled, focused, selected, or updated.
-- When a bug involves input, inspect whether values are being overwritten by later sync logic.
-- When a bug involves transitions, test both directions, not just the one the user described.
+When the bug is about spacing, clipping, or “looks wrong,” verify more than text:
 
-## For Non-UI Bugs
-
-- Prefer deterministic assertions over log reading.
-- If using a probe, print only the state needed to prove the transition.
-- If the failure depends on external state, reduce it to the smallest reproducible setup.
+- Check that critical controls are visible inside the intended frame.
+- Check that headers and back buttons remain reachable after height reductions.
+- Check that content scrolls when it exceeds the fixed container height.
+- Check that negative space is intentional; large unexplained blank regions count as a regression.
+- Treat screenshots or PNG renders as supporting evidence, not the only proof.
 
 ## Temporary Probes
 
@@ -149,6 +140,8 @@ Temporary probes are valid when they reduce guesswork. Use them to answer a spec
 - Did the value persist after the next refresh or callback?
 - Did the control actually become disabled, enabled, or focused?
 - Did the popover, menu, or status item expose the expected Accessibility attributes?
+
+One-off render scripts are acceptable for UI smoke checks when a test would be too heavy. Keep them targeted, use the production size, and delete temporary artifacts unless the user asked to keep them.
 
 Remove or isolate probes once they have served their purpose unless they are worth keeping as a real regression test.
 
@@ -172,6 +165,14 @@ Good verification language:
 - "Reproduced before the change with X, then re-ran the same path after the change and observed Y."
 - "Validated the primary bug path and one adjacent regression path."
 - "Build passed, but interactive verification was not run."
+
+Use this close-out template when reporting:
+
+- Claim:
+- Primary validation path:
+- Observed result:
+- Adjacent regression checks:
+- Not verified:
 
 ## If Reproduction Fails
 
