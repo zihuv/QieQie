@@ -117,18 +117,37 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
 
         switch state.status {
         case .idle:
-            applyIcon(
-                NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle"),
-                to: button,
-                statusItem: statusItem
-            )
+            if state.currentPhase == .focus {
+                applyIcon(
+                    NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle"),
+                    to: button,
+                    statusItem: statusItem
+                )
+            } else {
+                applyRenderedCountdownImage(
+                    FocusDisplayFormatter.countdown(state.phaseDuration),
+                    to: button,
+                    statusItem: statusItem,
+                    state: state
+                )
+            }
         case .running, .paused:
-            applyFixedWidthTitle(
-                FocusDisplayFormatter.countdown(state.remainingTime),
-                to: button,
-                statusItem: statusItem,
-                state: state
-            )
+            let title = FocusDisplayFormatter.countdown(state.remainingTime)
+            if state.currentPhase == .focus {
+                applyFixedWidthTitle(
+                    title,
+                    to: button,
+                    statusItem: statusItem,
+                    state: state
+                )
+            } else {
+                applyRenderedCountdownImage(
+                    title,
+                    to: button,
+                    statusItem: statusItem,
+                    state: state
+                )
+            }
         }
     }
 
@@ -156,13 +175,78 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
         statusItem.length = reservedTitleWidth(for: state)
     }
 
+    private func applyRenderedCountdownImage(
+        _ title: String,
+        to button: NSStatusBarButton,
+        statusItem: NSStatusItem,
+        state: FocusTimerState
+    ) {
+        let image = makeCountdownImage(
+            title: title,
+            color: Self.countdownTintColor(for: state.currentPhase) ?? .labelColor
+        )
+        button.title = title
+        button.attributedTitle = NSAttributedString(string: "")
+        button.image = image
+        button.image?.isTemplate = false
+        button.imagePosition = .imageOnly
+        button.contentTintColor = nil
+        statusItem.length = reservedTitleWidth(for: state)
+    }
+
     private func setButtonTitle(_ title: String, on button: NSStatusBarButton, state: FocusTimerState) {
+        let textColor = Self.countdownTintColor(for: state.currentPhase)
+        var attributes: [NSAttributedString.Key: Any] = [.font: titleFont]
+        if let textColor {
+            attributes[.foregroundColor] = textColor
+        }
         button.title = title
         button.attributedTitle = NSAttributedString(
             string: title,
-            attributes: [.font: titleFont]
+            attributes: attributes
         )
-        button.contentTintColor = Self.countdownTintColor(for: state.currentPhase)
+        button.contentTintColor = textColor
+    }
+
+    private func makeCountdownImage(title: String, color: NSColor) -> NSImage {
+        let attributedTitle = NSAttributedString(
+            string: title,
+            attributes: [
+                .font: titleFont,
+                .foregroundColor: color
+            ]
+        )
+        let size = attributedTitle.size()
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        let pixelWidth = max(1, Int(ceil(size.width * scale)))
+        let pixelHeight = max(1, Int(ceil(size.height * scale)))
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: pixelWidth,
+            pixelsHigh: pixelHeight,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )
+
+        guard let rep else {
+            return NSImage(size: size)
+        }
+
+        rep.size = size
+
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        attributedTitle.draw(at: .zero)
+        NSGraphicsContext.restoreGraphicsState()
+
+        let image = NSImage(size: size)
+        image.addRepresentation(rep)
+        return image
     }
 
     private func clearButtonTitle(on button: NSStatusBarButton) {

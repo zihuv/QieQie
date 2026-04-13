@@ -93,7 +93,38 @@ final class SettingsPopoverTests: XCTestCase {
         let recognizedText = try recognizedText(in: renderedImage)
         XCTAssertTrue(recognizedText.contains("返回"), "Recognized text: \(recognizedText)")
         XCTAssertTrue(recognizedText.contains("自动开始下个番茄"), "Recognized text: \(recognizedText)")
-        XCTAssertTrue(recognizedText.contains("自动休息"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("自动开始休息"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
+    func testMainPanelUsesStartBreakLabelWhenBreakIsWaitingToBeStarted() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        manager.state = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartBreak: false),
+            currentPhase: .shortBreak,
+            cycleFocusCount: 1,
+            phaseDuration: 5 * 60,
+            endTime: nil,
+            isPaused: false,
+            pausedAt: nil
+        )
+        let host = NSHostingController(
+            rootView: SettingsPopover(focusTimerManager: manager)
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.mainSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+
+        XCTAssertTrue(recognizedText.contains("开始休息"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
@@ -149,6 +180,49 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertEqual(button.title, "25:00")
         XCTAssertNil(button.contentTintColor)
         XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+    }
+
+    func testIdleBreakShowsPendingBreakCountdownInStatusBar() throws {
+        let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let statusBarManager = StatusBarManager(focusTimerManager: manager)
+
+        manager.state = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartBreak: false),
+            currentPhase: .shortBreak,
+            cycleFocusCount: 1,
+            phaseDuration: 5 * 60,
+            endTime: nil,
+            isPaused: false,
+            pausedAt: nil
+        )
+        pumpMainRunLoop()
+
+        let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
+        XCTAssertNotNil(button.image)
+        let renderedImage = try XCTUnwrap(renderImage(from: button))
+        XCTAssertTrue(imageContainsGreenPixels(renderedImage))
+    }
+
+    func testRunningBreakUsesGreenForegroundColorInStatusBar() throws {
+        let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let statusBarManager = StatusBarManager(focusTimerManager: manager)
+        let now = Date()
+
+        manager.state = FocusTimerState(
+            configuration: .default,
+            currentPhase: .shortBreak,
+            cycleFocusCount: 1,
+            phaseDuration: 5 * 60,
+            endTime: now.addingTimeInterval(5 * 60),
+            isPaused: false,
+            pausedAt: nil
+        )
+        pumpMainRunLoop()
+
+        let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
+        XCTAssertNotNil(button.image)
+        let renderedImage = try XCTUnwrap(renderImage(from: button))
+        XCTAssertTrue(imageContainsGreenPixels(renderedImage))
     }
 
     func testPopoverLayoutUsesDedicatedPanelSizes() {
@@ -310,6 +384,28 @@ final class SettingsPopoverTests: XCTestCase {
 
         view.cacheDisplay(in: bounds, to: representation)
         return representation.cgImage
+    }
+
+    private func imageContainsGreenPixels(_ image: CGImage) -> Bool {
+        guard let dataProvider = image.dataProvider, let data = dataProvider.data else {
+            return false
+        }
+
+        let bytes = CFDataGetBytePtr(data)
+        let length = CFDataGetLength(data)
+
+        for index in stride(from: 0, to: length, by: 4) {
+            let red = Int(bytes![index])
+            let green = Int(bytes![index + 1])
+            let blue = Int(bytes![index + 2])
+            let alpha = Int(bytes![index + 3])
+
+            if alpha > 0, green > 80, green > red + 30, green > blue + 20 {
+                return true
+            }
+        }
+
+        return false
     }
 
     private func recognizedText(in image: CGImage) throws -> String {

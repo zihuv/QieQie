@@ -192,7 +192,7 @@ struct SettingsPopover: View {
                             settingsDivider
 
                             settingsToggleRow(
-                                title: "自动休息",
+                                title: "自动开始休息",
                                 isOn: $autoStartBreak,
                                 accessibilityID: FocusTimerAccessibilityID.SettingsPopover.autoStartBreakToggle
                             )
@@ -337,7 +337,12 @@ struct SettingsPopover: View {
     private var mainButtonTitle: String {
         switch focusTimerManager.state.status {
         case .idle:
-            return "开始"
+            switch focusTimerManager.state.currentPhase {
+            case .focus:
+                return "开始"
+            case .shortBreak, .longBreak:
+                return "开始休息"
+            }
         case .running:
             return "暂停"
         case .paused:
