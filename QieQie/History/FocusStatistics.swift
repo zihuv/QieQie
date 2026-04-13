@@ -142,6 +142,31 @@ enum FocusDisplayFormatter {
         return "0m"
     }
 
+    static func summaryDuration(_ interval: TimeInterval) -> String {
+        let clampedInterval = max(0, Int(interval.rounded(.down)))
+        let hours = clampedInterval / 3600
+        let minutes = (clampedInterval % 3600) / 60
+        let seconds = clampedInterval % 60
+
+        if hours > 0, minutes > 0 {
+            return "\(hours)h\(minutes)min"
+        }
+
+        if hours > 0 {
+            return "\(hours)h"
+        }
+
+        if minutes > 0 {
+            return "\(minutes)min"
+        }
+
+        if seconds > 0 {
+            return "\(seconds)s"
+        }
+
+        return "0min"
+    }
+
     static func chartDurationAxisLabel(minutes: Double) -> String {
         let roundedMinutes = max(0, Int(minutes.rounded()))
         let hours = roundedMinutes / 60

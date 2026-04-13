@@ -300,17 +300,6 @@ struct SettingsPopover: View {
         VStack(alignment: .leading, spacing: 8) {
             statisticsRow(title: "今日", period: dashboardStats.today)
             statisticsRow(title: "本周", period: dashboardStats.week)
-
-            Button(action: showStatisticsOverview) {
-                HStack(spacing: 4) {
-                    Image(systemName: "clock.arrow.circlepath")
-                    Text("查看统计")
-                }
-                .font(.caption)
-            }
-            .buttonStyle(.plain)
-            .foregroundColor(.accentColor)
-            .disabled(!canShowStatistics)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
@@ -405,17 +394,17 @@ struct SettingsPopover: View {
     }
 
     private func statisticsRow(title: String, period: FocusStatisticsPeriod) -> some View {
-        HStack {
+        HStack(spacing: 12) {
             Text("\(title):")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            Spacer()
-            Text("\(period.sessionCount) 次")
-                .font(.caption)
-            Text(FocusStatistics.formatDuration(period.totalDuration))
-                .font(.caption)
+            Spacer(minLength: 12)
+            Text(FocusDisplayFormatter.summaryDuration(period.totalDuration))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(minWidth: 52, alignment: .trailing)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
         }
     }
 

@@ -16,6 +16,13 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(FocusDisplayFormatter.compactDuration((2 * 60 + 5) * 60), "2h5m")
     }
 
+    func testSummaryDurationFormatsMainPanelValues() {
+        XCTAssertEqual(FocusDisplayFormatter.summaryDuration(0), "0min")
+        XCTAssertEqual(FocusDisplayFormatter.summaryDuration(25 * 60), "25min")
+        XCTAssertEqual(FocusDisplayFormatter.summaryDuration(60 * 60), "1h")
+        XCTAssertEqual(FocusDisplayFormatter.summaryDuration((2 * 60 + 30) * 60), "2h30min")
+    }
+
     func testPreciseDateTimeUsesYearMonthDayAnd24HourTime() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .current

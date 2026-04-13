@@ -50,6 +50,7 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertTrue(recognizedText.contains("本周"), "Recognized text: \(recognizedText)")
         XCTAssertFalse(recognizedText.contains("时间显示在状态栏"), "Recognized text: \(recognizedText)")
         XCTAssertFalse(recognizedText.contains("自动切换"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("查看统计"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
@@ -349,7 +350,7 @@ final class SettingsPopoverTests: XCTestCase {
         statisticsWindow.orderOut(nil)
     }
 
-    func testStatisticsEntryAppearsWhenWindowActionIsAvailable() throws {
+    func testMainPanelDoesNotShowStatisticsEntryWhenWindowActionIsAvailable() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
         let historyManager = FocusHistoryManager(modelContainer: container)
@@ -374,7 +375,7 @@ final class SettingsPopoverTests: XCTestCase {
         let renderedImage = try XCTUnwrap(renderImage(from: host.view))
         let recognizedText = try recognizedText(in: renderedImage)
 
-        XCTAssertTrue(recognizedText.contains("查看统计"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("查看统计"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
