@@ -43,3 +43,4 @@ Pods/
 Carthage/Build/
 Dependencies/
 .accio/
+tmp
