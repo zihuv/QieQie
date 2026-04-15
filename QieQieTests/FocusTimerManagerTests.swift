@@ -32,6 +32,27 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(scheduler.lastInterval, 1)
     }
 
+    func testRunLoopTickerSchedulerAddsTimerToCommonModes() throws {
+        var capturedTimer: Timer?
+        var capturedMode: RunLoop.Mode?
+        let scheduler = RunLoopFocusTimerTickerScheduler { timer, mode in
+            capturedTimer = timer
+            capturedMode = mode
+        }
+        let expectation = expectation(description: "ticker fires")
+
+        _ = scheduler.scheduleRepeating(interval: 1) {
+            expectation.fulfill()
+        }
+
+        let timer = try XCTUnwrap(capturedTimer)
+        XCTAssertEqual(timer.timeInterval, 1, accuracy: 0.001)
+        XCTAssertEqual(capturedMode, .common)
+
+        timer.fire()
+        wait(for: [expectation], timeout: 1)
+    }
+
     func testStartPublishesUpdatedRunningStateToObjectWillChangeObservers() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()

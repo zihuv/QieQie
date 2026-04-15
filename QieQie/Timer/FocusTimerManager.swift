@@ -36,15 +36,28 @@ private final class FoundationFocusTimerScheduledTask: FocusTimerScheduledTask {
 }
 
 struct RunLoopFocusTimerTickerScheduler: FocusTimerTickerScheduling {
+    private let addTimer: (Timer, RunLoop.Mode) -> Void
+
+    init(runLoop: RunLoop = .main) {
+        self.addTimer = { timer, mode in
+            runLoop.add(timer, forMode: mode)
+        }
+    }
+
+    init(addTimer: @escaping (Timer, RunLoop.Mode) -> Void) {
+        self.addTimer = addTimer
+    }
+
     func scheduleRepeating(
         interval: TimeInterval,
         _ handler: @escaping @MainActor () -> Void
     ) -> FocusTimerScheduledTask {
-        let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in
             Task { @MainActor in
                 handler()
             }
         }
+        addTimer(timer, .common)
 
         return FoundationFocusTimerScheduledTask(timer: timer)
     }

@@ -29,6 +29,11 @@ enum FocusTimerAccessibilityID {
         static let backButton = "settingsPopover.backButton"
         static let phaseTitle = "settingsPopover.phaseTitle"
         static let progressLabel = "settingsPopover.progressLabel"
+        static let quickFocusDurationButton = "settingsPopover.quickFocusDurationButton"
+        static let quickFocusDurationEditor = "settingsPopover.quickFocusDurationEditor"
+        static let quickFocusDurationField = "settingsPopover.quickFocusDurationField"
+        static let quickFocusDurationCancelButton = "settingsPopover.quickFocusDurationCancelButton"
+        static let quickFocusDurationConfirmButton = "settingsPopover.quickFocusDurationConfirmButton"
         static let mainButton = "settingsPopover.mainButton"
         static let resetButton = "settingsPopover.resetButton"
         static let skipButton = "settingsPopover.skipButton"
@@ -58,6 +63,9 @@ struct SettingsPopover: View {
     @ObservedObject var focusTimerManager: FocusTimerManager
 
     @State private var panel: Panel = .main
+    @State private var isQuickFocusDurationEditorPresented = false
+    @State private var quickFocusMinutes = "25"
+    @State private var quickFocusDurationToggleGate = TransientPopoverToggleGate()
     @State private var focusMinutes = "25"
     @State private var shortBreakMinutes = "5"
     @State private var longBreakMinutes = "15"
@@ -67,6 +75,7 @@ struct SettingsPopover: View {
     @State private var dashboardStats = FocusStatistics()
     @State private var recentSessions: [FocusSession] = []
     @State private var mainContentSize = SettingsPopoverLayout.mainSize
+    @FocusState private var isQuickFocusDurationFieldFocused: Bool
     private let onPreferredSizeChange: ((CGSize) -> Void)?
     private let onOpenStatistics: (() -> Void)?
 
@@ -123,11 +132,19 @@ struct SettingsPopover: View {
             }
             reportPreferredSize()
         }
+        .onChange(of: isQuickFocusDurationEditorPresented) { wasPresented, isPresented in
+            if wasPresented, !isPresented {
+                quickFocusDurationToggleGate.recordDismiss(at: Date())
+                syncQuickFocusDurationField()
+                isQuickFocusDurationFieldFocused = false
+            }
+        }
     }
 
     private var mainContent: some View {
         VStack(spacing: 10) {
             headerRow(title: focusTimerManager.state.currentPhase.title, showsBack: false)
+            quickFocusDurationSection
             taskNameSection
             statisticsSection
             controlSection
@@ -305,6 +322,78 @@ struct SettingsPopover: View {
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
         .cornerRadius(12)
+    }
+
+    private var quickFocusDurationSection: some View {
+        Button(action: toggleQuickFocusDurationEditor) {
+            Text(formattedFocusDuration)
+                .font(.system(size: 16, weight: .semibold))
+                .monospacedDigit()
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.2), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .popover(
+            isPresented: $isQuickFocusDurationEditorPresented,
+            attachmentAnchor: .point(.bottom),
+            arrowEdge: .top
+        ) {
+            quickFocusDurationEditor
+        }
+        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationButton)
+    }
+
+    private var quickFocusDurationEditor: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                TextField("", text: $quickFocusMinutes)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 108)
+                    .multilineTextAlignment(.center)
+                    .focused($isQuickFocusDurationFieldFocused)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationField)
+                    .onChange(of: quickFocusMinutes) { _, newValue in
+                        quickFocusMinutes = FocusTimerDurationParser.sanitizeNumericInput(
+                            newValue,
+                            maxLength: 3
+                        )
+                    }
+                    .onSubmit(applyQuickFocusDuration)
+
+                Text("分钟")
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
+            }
+
+            HStack(spacing: 8) {
+                Button("取消", role: .cancel, action: dismissQuickFocusDurationEditor)
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationCancelButton)
+
+                Button("确定", action: applyQuickFocusDuration)
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
+                    .disabled(!canApplyQuickFocusDuration)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationConfirmButton)
+            }
+        }
+        .padding(14)
+        .frame(width: 196)
+        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationEditor)
+        .onAppear {
+            syncQuickFocusDurationField()
+            Task { @MainActor in
+                isQuickFocusDurationFieldFocused = true
+            }
+        }
     }
 
     private var taskNameSection: some View {
@@ -495,6 +584,7 @@ struct SettingsPopover: View {
 
     private func syncConfigurationFields() {
         let configuration = focusTimerManager.configuration
+        quickFocusMinutes = minutesString(from: configuration.focusDuration)
         focusMinutes = minutesString(from: configuration.focusDuration)
         shortBreakMinutes = minutesString(from: configuration.shortBreakDuration)
         longBreakMinutes = minutesString(from: configuration.longBreakDuration)
@@ -582,6 +672,40 @@ struct SettingsPopover: View {
         onPreferredSizeChange?(preferredSize)
     }
 
+    private func toggleQuickFocusDurationEditor() {
+        if quickFocusDurationToggleGate.consumeDismissIfNeeded(at: Date()) {
+            return
+        }
+
+        if isQuickFocusDurationEditorPresented {
+            dismissQuickFocusDurationEditor()
+        } else {
+            presentQuickFocusDurationEditor()
+        }
+    }
+
+    private func presentQuickFocusDurationEditor() {
+        syncQuickFocusDurationField()
+        isQuickFocusDurationEditorPresented = true
+    }
+
+    private func dismissQuickFocusDurationEditor() {
+        isQuickFocusDurationEditorPresented = false
+    }
+
+    private func applyQuickFocusDuration() {
+        guard let minutes = Int(quickFocusMinutes), minutes > 0 else { return }
+
+        var configuration = focusTimerManager.configuration
+        configuration.focusDuration = TimeInterval(minutes * 60)
+        focusTimerManager.updateConfiguration(configuration)
+        isQuickFocusDurationEditorPresented = false
+    }
+
+    private func syncQuickFocusDurationField() {
+        quickFocusMinutes = minutesString(from: focusTimerManager.configuration.focusDuration)
+    }
+
     private var preferredSize: CGSize {
         switch panel {
         case .main:
@@ -591,6 +715,15 @@ struct SettingsPopover: View {
         case .statistics:
             return SettingsPopoverLayout.statisticsSize
         }
+    }
+
+    private var formattedFocusDuration: String {
+        FocusDisplayFormatter.countdown(focusTimerManager.configuration.focusDuration)
+    }
+
+    private var canApplyQuickFocusDuration: Bool {
+        guard let minutes = Int(quickFocusMinutes) else { return false }
+        return minutes > 0
     }
 }
 
@@ -616,5 +749,29 @@ private extension View {
             }
         )
         .onPreferenceChange(ContentSizePreferenceKey.self, perform: action)
+    }
+}
+
+struct TransientPopoverToggleGate {
+    private(set) var lastDismissedAt: Date?
+    let suppressionInterval: TimeInterval
+
+    init(suppressionInterval: TimeInterval = 0.25) {
+        self.suppressionInterval = suppressionInterval
+    }
+
+    mutating func recordDismiss(at date: Date) {
+        lastDismissedAt = date
+    }
+
+    mutating func consumeDismissIfNeeded(at date: Date) -> Bool {
+        guard let lastDismissedAt else { return false }
+
+        let shouldSuppress = date.timeIntervalSince(lastDismissedAt) < suppressionInterval
+        if shouldSuppress {
+            self.lastDismissedAt = nil
+        }
+
+        return shouldSuppress
     }
 }

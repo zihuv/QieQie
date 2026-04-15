@@ -7,6 +7,77 @@ import XCTest
 
 @MainActor
 final class SettingsPopoverTests: XCTestCase {
+    func testTransientPopoverToggleGateSuppressesImmediateReopenAfterDismiss() {
+        var gate = TransientPopoverToggleGate(suppressionInterval: 0.25)
+        let dismissedAt = Date(timeIntervalSinceReferenceDate: 100)
+
+        gate.recordDismiss(at: dismissedAt)
+
+        XCTAssertTrue(gate.consumeDismissIfNeeded(at: dismissedAt.addingTimeInterval(0.05)))
+        XCTAssertNil(gate.lastDismissedAt)
+    }
+
+    func testTransientPopoverToggleGateAllowsLaterToggle() {
+        var gate = TransientPopoverToggleGate(suppressionInterval: 0.25)
+        let dismissedAt = Date(timeIntervalSinceReferenceDate: 100)
+
+        gate.recordDismiss(at: dismissedAt)
+
+        XCTAssertFalse(gate.consumeDismissIfNeeded(at: dismissedAt.addingTimeInterval(0.3)))
+        XCTAssertEqual(gate.lastDismissedAt, dismissedAt)
+    }
+
+    func testMainPanelShowsQuickFocusDurationShortcut() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        let host = NSHostingController(
+            rootView: SettingsPopover(focusTimerManager: manager)
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.mainSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+
+        XCTAssertTrue(recognizedText.contains("25:00"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("专注时长"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
+    func testQuickFocusDurationShortcutReflectsConfigurationChanges() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        let host = NSHostingController(
+            rootView: SettingsPopover(focusTimerManager: manager)
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.mainSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        var configuration = manager.configuration
+        configuration.focusDuration = 40 * 60
+        manager.updateConfiguration(configuration)
+        pumpMainRunLoop()
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+
+        XCTAssertTrue(recognizedText.contains("40:00"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("专注时长"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
     func testMainPanelShowsTaskInputFieldAndCurrentTaskName() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let manager = FocusTimerManager(userDefaults: defaults)
@@ -126,6 +197,44 @@ final class SettingsPopoverTests: XCTestCase {
         let recognizedText = try recognizedText(in: renderedImage)
 
         XCTAssertTrue(recognizedText.contains("开始休息"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
+    func testSkipButtonAdvancesPausedFocusToRunningBreakInPopover() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        let pausedAt = Date()
+        manager.state = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartBreak: false, autoStartNextFocus: false),
+            currentPhase: .focus,
+            cycleFocusCount: 0,
+            phaseDuration: 25 * 60,
+            endTime: pausedAt.addingTimeInterval(20 * 60),
+            isPaused: true,
+            pausedAt: pausedAt
+        )
+
+        let host = NSHostingController(
+            rootView: SettingsPopover(focusTimerManager: manager)
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.mainSize)
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        manager.skipCurrentPhase()
+        pumpMainRunLoop()
+
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.status, .running)
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+        XCTAssertTrue(recognizedText.contains("暂停"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("继续"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
