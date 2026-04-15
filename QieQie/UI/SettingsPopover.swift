@@ -7,18 +7,9 @@ enum SettingsPopoverInitialPanel {
 }
 
 enum SettingsPopoverLayout {
-    static let mainWidth: CGFloat = 236
-    static let mainEstimatedHeight: CGFloat = 220
-    static let mainSize = CGSize(width: mainWidth, height: mainEstimatedHeight)
-    static let settingsSize = CGSize(width: 344, height: 408)
-    static let statisticsSize = CGSize(width: 392, height: 500)
-
-    static func fittedMainSize(for measuredSize: CGSize) -> CGSize {
-        CGSize(
-            width: mainWidth,
-            height: max(ceil(measuredSize.height), mainEstimatedHeight)
-        )
-    }
+    static let mainSize = FocusPanelLayout.unifiedPanelSize
+    static let settingsSize = FocusPanelLayout.unifiedPanelSize
+    static let statisticsSize = FocusPanelLayout.unifiedPanelSize
 }
 
 enum FocusTimerAccessibilityID {
@@ -74,7 +65,6 @@ struct SettingsPopover: View {
     @State private var autoStartNextFocus = true
     @State private var dashboardStats = FocusStatistics()
     @State private var recentSessions: [FocusSession] = []
-    @State private var mainContentSize = SettingsPopoverLayout.mainSize
     @FocusState private var isQuickFocusDurationFieldFocused: Bool
     private let onPreferredSizeChange: ((CGSize) -> Void)?
     private let onOpenStatistics: (() -> Void)?
@@ -147,29 +137,22 @@ struct SettingsPopover: View {
             quickFocusDurationSection
             taskNameSection
             statisticsSection
+            Spacer(minLength: 0)
             controlSection
         }
-        .padding(10)
-        .frame(width: SettingsPopoverLayout.mainWidth, alignment: .top)
-        .fixedSize(horizontal: false, vertical: true)
-        .onContentSizeChange { newSize in
-            guard newSize.height > 0 else { return }
-
-            let fittedSize = SettingsPopoverLayout.fittedMainSize(for: newSize)
-            guard fittedSize != mainContentSize else { return }
-
-            mainContentSize = fittedSize
-            if panel == .main {
-                reportPreferredSize()
-            }
-        }
+        .padding(FocusPanelChrome.compactPadding)
+        .frame(
+            width: SettingsPopoverLayout.mainSize.width,
+            height: SettingsPopoverLayout.mainSize.height,
+            alignment: .top
+        )
     }
 
     private var settingsContent: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 8) {
             headerRow(title: "设置", showsBack: true)
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 10) {
                     settingsSection(title: "计时选项") {
                         VStack(spacing: 0) {
                             settingsInputRow(
@@ -229,10 +212,10 @@ struct SettingsPopover: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.bottom, 4)
+                .padding(.bottom, 0)
             }
         }
-        .padding(14)
+        .padding(10)
         .frame(
             width: SettingsPopoverLayout.settingsSize.width,
             height: SettingsPopoverLayout.settingsSize.height,
@@ -265,14 +248,14 @@ struct SettingsPopover: View {
                 .disabled(!canOpenStatisticsDetail)
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsDetailButton)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .padding(.horizontal, FocusPanelChrome.compactPadding)
+            .padding(.top, 10)
 
             StatisticsOverviewView(
                 statistics: dashboardStats,
                 recentSessions: Array(recentSessions.prefix(30))
             )
-            .padding(.top, 4)
+            .padding(.top, 2)
         }
         .frame(
             width: SettingsPopoverLayout.statisticsSize.width,
@@ -320,8 +303,7 @@ struct SettingsPopover: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-        .cornerRadius(12)
+        .focusPanelSurface(cornerRadius: 12)
     }
 
     private var quickFocusDurationSection: some View {
@@ -332,12 +314,7 @@ struct SettingsPopover: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.2), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .focusPanelSurface()
         }
         .buttonStyle(.plain)
         .popover(
@@ -406,14 +383,9 @@ struct SettingsPopover: View {
                 .textFieldStyle(.plain)
                 .lineLimit(1)
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.2), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 9)
+                .focusPanelSurface(cornerRadius: 12)
         }
     }
 
@@ -501,9 +473,9 @@ struct SettingsPopover: View {
         title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.secondary)
 
             settingsCard {
@@ -517,17 +489,12 @@ struct SettingsPopover: View {
     ) -> some View {
         content()
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .background(Color(nsColor: NSColor.controlBackgroundColor).opacity(0.55))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color(nsColor: NSColor.separatorColor).opacity(0.22), lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .focusPanelSurface()
     }
 
     private var settingsDivider: some View {
         Divider()
-            .padding(.leading, 14)
+            .padding(.leading, 8)
     }
 
     private func settingsInputRow(
@@ -539,29 +506,42 @@ struct SettingsPopover: View {
         upperBound: Int? = nil,
         onCommit: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
-            Spacer(minLength: 12)
-            TextField("", text: value)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 88)
-                .multilineTextAlignment(.center)
-                .accessibilityIdentifier(accessibilityID)
-                .onChange(of: value.wrappedValue) { _, newValue in
-                    value.wrappedValue = FocusTimerDurationParser.sanitizeNumericInput(
-                        newValue,
-                        maxLength: maxLength,
-                        upperBound: upperBound
-                    )
-                    onCommit()
-                }
-            Text(suffix)
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .allowsTightening(true)
+                .frame(width: 82, alignment: .leading)
+
+            Spacer(minLength: 4)
+
+            HStack(spacing: 6) {
+                TextField("", text: value)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.mini)
+                    .frame(width: 64)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(accessibilityID)
+                    .onChange(of: value.wrappedValue) { _, newValue in
+                        value.wrappedValue = FocusTimerDurationParser.sanitizeNumericInput(
+                            newValue,
+                            maxLength: maxLength,
+                            upperBound: upperBound
+                        )
+                        onCommit()
+                    }
+
+                Text(suffix)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .frame(width: 24, alignment: .leading)
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
     }
 
     private func settingsToggleRow(
@@ -569,17 +549,25 @@ struct SettingsPopover: View {
         isOn: Binding<Bool>,
         accessibilityID: String
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 14, weight: .medium))
-            Spacer(minLength: 12)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+                .allowsTightening(true)
+                .frame(width: 112, alignment: .leading)
+
+            Spacer(minLength: 4)
+
             Toggle("", isOn: isOn)
                 .labelsHidden()
                 .toggleStyle(.switch)
+                .controlSize(.mini)
                 .accessibilityIdentifier(accessibilityID)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
     }
 
     private func syncConfigurationFields() {
@@ -709,7 +697,7 @@ struct SettingsPopover: View {
     private var preferredSize: CGSize {
         switch panel {
         case .main:
-            return mainContentSize
+            return SettingsPopoverLayout.mainSize
         case .settings:
             return SettingsPopoverLayout.settingsSize
         case .statistics:
@@ -730,25 +718,6 @@ struct SettingsPopover: View {
 struct SettingsPopover_Previews: PreviewProvider {
     static var previews: some View {
         SettingsPopover(focusTimerManager: FocusTimerManager())
-    }
-}
-
-private struct ContentSizePreferenceKey: PreferenceKey {
-    static var defaultValue = CGSize.zero
-
-    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
-        value = nextValue()
-    }
-}
-
-private extension View {
-    func onContentSizeChange(_ action: @escaping (CGSize) -> Void) -> some View {
-        background(
-            GeometryReader { proxy in
-                Color.clear.preference(key: ContentSizePreferenceKey.self, value: proxy.size)
-            }
-        )
-        .onPreferenceChange(ContentSizePreferenceKey.self, perform: action)
     }
 }
 

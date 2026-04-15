@@ -1,5 +1,16 @@
 import SwiftUI
 
+enum FocusPanelChrome {
+    static let surfaceCornerRadius: CGFloat = 14
+    static let surfaceFill = Color(nsColor: NSColor.controlBackgroundColor).opacity(0.42)
+    static let surfaceStroke = Color(nsColor: NSColor.separatorColor).opacity(0.18)
+    static let compactPadding: CGFloat = 12
+}
+
+enum FocusPanelLayout {
+    static let unifiedPanelSize = CGSize(width: 220, height: 280)
+}
+
 struct PopoverHeaderBar<Trailing: View>: View {
     let title: String
     let titleAccessibilityID: String?
@@ -74,5 +85,16 @@ private extension View {
         } else {
             self
         }
+    }
+}
+
+extension View {
+    func focusPanelSurface(cornerRadius: CGFloat = FocusPanelChrome.surfaceCornerRadius) -> some View {
+        background(FocusPanelChrome.surfaceFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(FocusPanelChrome.surfaceStroke, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }

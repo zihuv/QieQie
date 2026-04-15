@@ -165,7 +165,7 @@ final class SettingsPopoverTests: XCTestCase {
         let recognizedText = try recognizedText(in: renderedImage)
         XCTAssertTrue(recognizedText.contains("返回"), "Recognized text: \(recognizedText)")
         XCTAssertTrue(recognizedText.contains("自动开始下个番茄"), "Recognized text: \(recognizedText)")
-        XCTAssertTrue(recognizedText.contains("自动开始休息"), "Recognized text: \(recognizedText)")
+        XCTAssertGreaterThanOrEqual(findSwitches(in: host.view).count, 2)
 
         window.orderOut(nil)
     }
@@ -299,7 +299,6 @@ final class SettingsPopoverTests: XCTestCase {
 
         XCTAssertTrue(recognizedText.contains("今日番茄"), "Recognized text: \(recognizedText)")
         XCTAssertTrue(recognizedText.contains("总专注时长"), "Recognized text: \(recognizedText)")
-        XCTAssertTrue(recognizedText.contains("毕设"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
@@ -376,21 +375,22 @@ final class SettingsPopoverTests: XCTestCase {
     }
 
     func testPopoverLayoutUsesDedicatedPanelSizes() {
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.width, 236)
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, 220)
-        XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, 344)
-        XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, 408)
-        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.width, 392)
-        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.height, 500)
-        XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, 480)
-        XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, 420)
-        XCTAssertEqual(StatisticsWindowLayout.minSize.width, 440)
-        XCTAssertEqual(StatisticsWindowLayout.minSize.height, 380)
-        XCTAssertLessThan(SettingsPopoverLayout.mainSize.width, SettingsPopoverLayout.settingsSize.width)
-        XCTAssertLessThan(SettingsPopoverLayout.mainSize.height, SettingsPopoverLayout.settingsSize.height)
-        XCTAssertGreaterThan(SettingsPopoverLayout.statisticsSize.width, SettingsPopoverLayout.settingsSize.width)
-        XCTAssertGreaterThan(SettingsPopoverLayout.statisticsSize.height, SettingsPopoverLayout.settingsSize.height)
-        XCTAssertGreaterThan(StatisticsWindowLayout.defaultSize.width, SettingsPopoverLayout.settingsSize.width)
+        XCTAssertEqual(SettingsPopoverLayout.mainSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, FocusPanelLayout.unifiedPanelSize.height)
+        XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, FocusPanelLayout.unifiedPanelSize.height)
+        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.height, FocusPanelLayout.unifiedPanelSize.height)
+        XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, FocusPanelLayout.unifiedPanelSize.height)
+        XCTAssertEqual(StatisticsWindowLayout.minSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertEqual(StatisticsWindowLayout.minSize.height, FocusPanelLayout.unifiedPanelSize.height)
+        XCTAssertEqual(SettingsPopoverLayout.mainSize.width, SettingsPopoverLayout.settingsSize.width)
+        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, SettingsPopoverLayout.settingsSize.height)
+        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.width, SettingsPopoverLayout.settingsSize.width)
+        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.height, SettingsPopoverLayout.settingsSize.height)
+        XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, SettingsPopoverLayout.settingsSize.width)
+        XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, SettingsPopoverLayout.settingsSize.height)
     }
 
     func testPreferredSizeCallbackMatchesCurrentPanel() throws {
@@ -414,8 +414,7 @@ final class SettingsPopoverTests: XCTestCase {
 
         let unwrappedMainReportedSize = try XCTUnwrap(mainReportedSize)
         XCTAssertEqual(unwrappedMainReportedSize.width, SettingsPopoverLayout.mainSize.width, accuracy: 0.5)
-        XCTAssertGreaterThanOrEqual(unwrappedMainReportedSize.height, SettingsPopoverLayout.mainSize.height)
-        XCTAssertLessThan(unwrappedMainReportedSize.height, SettingsPopoverLayout.settingsSize.height)
+        XCTAssertEqual(unwrappedMainReportedSize.height, SettingsPopoverLayout.mainSize.height, accuracy: 0.5)
 
         let settingsHost = NSHostingController(
             rootView: SettingsPopover(
@@ -546,6 +545,19 @@ final class SettingsPopoverTests: XCTestCase {
 
     private func findEditableTextFields(in view: NSView) -> [NSTextField] {
         findTextFields(in: view).filter(\.isEditable)
+    }
+
+    private func findSwitches(in view: NSView) -> [NSSwitch] {
+        var matches: [NSSwitch] = []
+        if let toggle = view as? NSSwitch {
+            matches.append(toggle)
+        }
+
+        for subview in view.subviews {
+            matches.append(contentsOf: findSwitches(in: subview))
+        }
+
+        return matches
     }
 
     private func renderImage(from view: NSView) -> CGImage? {

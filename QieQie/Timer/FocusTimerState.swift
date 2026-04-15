@@ -8,7 +8,7 @@ enum FocusTimerPhase: String, CaseIterable, Equatable {
     var title: String {
         switch self {
         case .focus:
-            return "专注时间"
+            return ""
         case .shortBreak:
             return "短休息"
         case .longBreak:

@@ -2,8 +2,8 @@ import Charts
 import SwiftUI
 
 enum StatisticsWindowLayout {
-    static let defaultSize = CGSize(width: 480, height: 420)
-    static let minSize = CGSize(width: 440, height: 380)
+    static let defaultSize = FocusPanelLayout.unifiedPanelSize
+    static let minSize = FocusPanelLayout.unifiedPanelSize
 }
 
 struct HistoryView: View {
@@ -14,17 +14,17 @@ struct HistoryView: View {
     @State private var showClearConfirmation = false
 
     private let gridColumns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8)
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             summarySection
             trendSection
             actionSection
         }
-        .padding(16)
+        .padding(12)
         .frame(
             minWidth: StatisticsWindowLayout.minSize.width,
             maxWidth: .infinity,
@@ -46,7 +46,7 @@ struct HistoryView: View {
     }
 
     private var summarySection: some View {
-        LazyVGrid(columns: gridColumns, spacing: 10) {
+        LazyVGrid(columns: gridColumns, spacing: 6) {
             summaryCard(title: "今日", period: statistics.today)
             summaryCard(title: "本周", period: statistics.week)
             summaryCard(title: "本月", period: statistics.month)
@@ -55,7 +55,7 @@ struct HistoryView: View {
     }
 
     private var trendSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("近 7 天")
                     .font(.system(size: 14, weight: .semibold))
@@ -68,7 +68,7 @@ struct HistoryView: View {
                 Text("完成一次专注后显示趋势")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
             } else {
                 Chart {
                     ForEach(historyInsights.recentDailyTrend) { point in
@@ -102,12 +102,11 @@ struct HistoryView: View {
                         }
                     }
                 }
-                .frame(height: 128)
+                .frame(height: 112)
             }
         }
-        .padding(12)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-        .cornerRadius(12)
+        .padding(8)
+        .focusPanelSurface(cornerRadius: 12)
     }
 
     private var actionSection: some View {
@@ -142,10 +141,9 @@ struct HistoryView: View {
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-        .padding(10)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-        .cornerRadius(12)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .padding(8)
+        .focusPanelSurface(cornerRadius: 12)
     }
 
     private func loadData() {
@@ -165,18 +163,18 @@ struct StatisticsOverviewView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 summarySection
                 recordsSection
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(12)
+            .padding(8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var summarySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("概览")
                 .font(.system(size: 15, weight: .semibold))
 
@@ -190,13 +188,12 @@ struct StatisticsOverviewView: View {
                     }
                 }
             }
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-            .cornerRadius(16)
+            .focusPanelSurface()
         }
     }
 
     private var recordsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("专注记录")
                 .font(.system(size: 15, weight: .semibold))
 
@@ -204,12 +201,11 @@ struct StatisticsOverviewView: View {
                 Text("完成一次专注后显示最近记录")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
-                    .padding(10)
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-                    .cornerRadius(16)
+                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+                    .padding(8)
+                    .focusPanelSurface()
             } else {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 8) {
                     ForEach(Array(daySections.enumerated()), id: \.element.id) { index, section in
                         daySection(section)
 
@@ -218,10 +214,9 @@ struct StatisticsOverviewView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.35))
-                .cornerRadius(16)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .focusPanelSurface()
             }
         }
     }
@@ -259,8 +254,8 @@ struct StatisticsOverviewView: View {
                 .minimumScaleFactor(0.65)
                 .monospacedDigit()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     private func daySection(_ section: StatisticsOverviewDaySection) -> some View {
