@@ -1,16 +1,5 @@
 import SwiftUI
 
-enum FocusPanelChrome {
-    static let surfaceCornerRadius: CGFloat = 14
-    static let surfaceFill = Color(nsColor: NSColor.controlBackgroundColor).opacity(0.42)
-    static let surfaceStroke = Color(nsColor: NSColor.separatorColor).opacity(0.18)
-    static let compactPadding: CGFloat = 12
-}
-
-enum FocusPanelLayout {
-    static let unifiedPanelSize = CGSize(width: 220, height: 280)
-}
-
 struct PopoverHeaderBar<Trailing: View>: View {
     let title: String
     let titleAccessibilityID: String?
@@ -38,9 +27,9 @@ struct PopoverHeaderBar<Trailing: View>: View {
                 Button(action: onBack) {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(FocusPanelTypography.headerBackIcon)
                         Text("返回")
-                            .font(.system(size: 12, weight: .medium))
+                            .font(FocusPanelTypography.headerBackLabel)
                     }
                 }
                 .buttonStyle(.bordered)
@@ -49,7 +38,7 @@ struct PopoverHeaderBar<Trailing: View>: View {
             }
 
             Text(title)
-                .font(.system(size: 15, weight: .semibold))
+                .font(FocusPanelTypography.headerTitle)
                 .applyAccessibilityIdentifier(titleAccessibilityID)
 
             Spacer(minLength: 0)
@@ -85,16 +74,5 @@ private extension View {
         } else {
             self
         }
-    }
-}
-
-extension View {
-    func focusPanelSurface(cornerRadius: CGFloat = FocusPanelChrome.surfaceCornerRadius) -> some View {
-        background(FocusPanelChrome.surfaceFill)
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(FocusPanelChrome.surfaceStroke, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }

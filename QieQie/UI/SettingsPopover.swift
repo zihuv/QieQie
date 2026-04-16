@@ -242,7 +242,7 @@ struct SettingsPopover: View {
             ) {
                 Button(action: openStatisticsWindow) {
                     Text("详情")
-                        .font(.caption)
+                        .font(FocusPanelTypography.supportingText)
                 }
                 .buttonStyle(.plain)
                 .disabled(!canOpenStatisticsDetail)
@@ -273,21 +273,21 @@ struct SettingsPopover: View {
         ) {
             if !showsBack {
                 Text(focusTimerManager.state.progressText)
-                    .font(.caption)
+                    .font(FocusPanelTypography.supportingText)
                     .monospacedDigit()
                     .foregroundColor(.secondary)
                     .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.progressLabel)
 
                 Button(action: { panel = .settings }) {
                     Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 13))
+                        .font(FocusPanelTypography.controlIcon)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.settingsButton)
 
                 Button(action: showStatisticsOverview) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 13))
+                        .font(FocusPanelTypography.controlIcon)
                 }
                 .buttonStyle(.plain)
                 .disabled(!canShowStatistics)
@@ -303,13 +303,13 @@ struct SettingsPopover: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
-        .focusPanelSurface(cornerRadius: 12)
+        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
     }
 
     private var quickFocusDurationSection: some View {
         Button(action: toggleQuickFocusDurationEditor) {
             Text(formattedFocusDuration)
-                .font(.system(size: 16, weight: .semibold))
+                .font(FocusPanelTypography.timerValue)
                 .monospacedDigit()
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
@@ -345,7 +345,7 @@ struct SettingsPopover: View {
                     .onSubmit(applyQuickFocusDuration)
 
                 Text("分钟")
-                    .font(.system(size: 14))
+                    .font(FocusPanelTypography.bodyLabel)
                     .foregroundColor(.secondary)
             }
 
@@ -376,7 +376,7 @@ struct SettingsPopover: View {
     private var taskNameSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("当前任务")
-                .font(.caption)
+                .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
 
             TextField("输入任务", text: taskNameBinding)
@@ -385,7 +385,7 @@ struct SettingsPopover: View {
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 9)
-                .focusPanelSurface(cornerRadius: 12)
+                .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
         }
     }
 
@@ -457,11 +457,11 @@ struct SettingsPopover: View {
     private func statisticsRow(title: String, period: FocusStatisticsPeriod) -> some View {
         HStack(spacing: 12) {
             Text("\(title):")
-                .font(.caption)
+                .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
             Spacer(minLength: 12)
             Text(FocusDisplayFormatter.summaryDuration(period.totalDuration))
-                .font(.system(size: 12, weight: .medium))
+                .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.secondary)
                 .monospacedDigit()
                 .lineLimit(1)
@@ -475,7 +475,7 @@ struct SettingsPopover: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(FocusPanelTypography.sectionTitle)
                 .foregroundColor(.secondary)
 
             settingsCard {
@@ -508,7 +508,7 @@ struct SettingsPopover: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(FocusPanelTypography.bodyLabel)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
                 .allowsTightening(true)
@@ -533,7 +533,7 @@ struct SettingsPopover: View {
                     }
 
                 Text(suffix)
-                    .font(.system(size: 12))
+                    .font(FocusPanelTypography.supportingText)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .frame(width: 24, alignment: .leading)
@@ -551,7 +551,7 @@ struct SettingsPopover: View {
     ) -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
+                .font(FocusPanelTypography.bodyLabel)
                 .lineLimit(1)
                 .minimumScaleFactor(0.76)
                 .allowsTightening(true)

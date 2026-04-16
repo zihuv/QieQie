@@ -58,15 +58,15 @@ struct HistoryView: View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("近 7 天")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(FocusPanelTypography.sectionTitle)
                 Text("累计 \(FocusStatistics.formatDuration(recentTrendTotal))")
-                    .font(.caption)
+                    .font(FocusPanelTypography.supportingText)
                     .foregroundColor(.secondary)
             }
 
             if statistics.isEmpty {
                 Text("完成一次专注后显示趋势")
-                    .font(.caption)
+                    .font(FocusPanelTypography.supportingText)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
             } else {
@@ -106,7 +106,7 @@ struct HistoryView: View {
             }
         }
         .padding(8)
-        .focusPanelSurface(cornerRadius: 12)
+        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
     }
 
     private var actionSection: some View {
@@ -131,19 +131,19 @@ struct HistoryView: View {
     private func summaryCard(title: String, period: FocusStatisticsPeriod) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.caption2)
+                .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
 
             Text("\(period.sessionCount) 次")
-                .font(.system(size: 15, weight: .semibold))
+                .font(FocusPanelTypography.cardValue)
 
             Text(FocusStatistics.formatDuration(period.totalDuration))
-                .font(.caption2)
+                .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .padding(8)
-        .focusPanelSurface(cornerRadius: 12)
+        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
     }
 
     private func loadData() {
@@ -176,7 +176,7 @@ struct StatisticsOverviewView: View {
     private var summarySection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("概览")
-                .font(.system(size: 15, weight: .semibold))
+                .font(FocusPanelTypography.sectionTitle)
 
             VStack(spacing: 0) {
                 ForEach(Array(summaryMetrics.enumerated()), id: \.element.id) { index, metric in
@@ -195,11 +195,11 @@ struct StatisticsOverviewView: View {
     private var recordsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("专注记录")
-                .font(.system(size: 15, weight: .semibold))
+                .font(FocusPanelTypography.sectionTitle)
 
             if daySections.isEmpty {
                 Text("完成一次专注后显示最近记录")
-                    .font(.caption)
+                    .font(FocusPanelTypography.supportingText)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
                     .padding(8)
@@ -243,13 +243,13 @@ struct StatisticsOverviewView: View {
     private func summaryMetricRow(_ metric: StatisticsOverviewMetric) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Text(metric.title)
-                .font(.system(size: 13, weight: .medium))
+                .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.secondary)
 
             Spacer(minLength: 10)
 
             Text(metric.value)
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .font(FocusPanelTypography.metricValue)
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
                 .monospacedDigit()
@@ -261,7 +261,7 @@ struct StatisticsOverviewView: View {
     private func daySection(_ section: StatisticsOverviewDaySection) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(FocusDisplayFormatter.preciseDate(section.date))
-                .font(.system(size: 12, weight: .semibold))
+                .font(FocusPanelTypography.dateLabel)
                 .foregroundColor(.secondary)
                 .monospacedDigit()
 
@@ -282,19 +282,19 @@ struct StatisticsOverviewView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(StatisticsOverviewGrouping.timeRangeText(for: session))
-                    .font(.system(size: 12))
+                    .font(FocusPanelTypography.supportingText)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
 
                 Text(taskName(for: session))
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(FocusPanelTypography.entryTitle)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 8)
 
             Text(FocusDisplayFormatter.compactDuration(session.duration))
-                .font(.system(size: 12, weight: .medium))
+                .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.secondary)
                 .monospacedDigit()
                 .padding(.top, 1)
