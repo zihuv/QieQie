@@ -204,7 +204,13 @@ final class FocusTimerManager: ObservableObject {
         at date: Date,
         trigger: FocusTimerAdvanceTrigger
     ) {
+        let shouldPreservePause = trigger == .skipped && state.isPaused
         let result = engine.advance(state, now: date, trigger: trigger)
+        let nextState = preservedPauseStateIfNeeded(
+            from: result.state,
+            at: date,
+            shouldPreservePause: shouldPreservePause
+        )
         if let duration = result.completedFocusDuration {
             focusHistoryManager?.recordCompletedFocus(
                 duration: duration,
@@ -215,15 +221,15 @@ final class FocusTimerManager: ObservableObject {
             activeFocusTaskName = nil
         }
 
-        publishState(result.state)
+        publishState(nextState)
 
-        if result.state.currentPhase == .focus, result.state.status(at: date) == .running {
+        if nextState.currentPhase == .focus, nextState.status(at: date) != .idle {
             activeFocusTaskName = recordedTaskName
-        } else if result.state.currentPhase != .focus {
+        } else if nextState.currentPhase != .focus {
             activeFocusTaskName = nil
         }
 
-        if result.state.status(at: date) == .running {
+        if nextState.status(at: date) == .running {
             startTimer()
         }
     }
@@ -277,6 +283,15 @@ final class FocusTimerManager: ObservableObject {
 
     private static func normalizeTaskNameInput(_ taskName: String) -> String {
         taskName.replacingOccurrences(of: "\n", with: " ")
+    }
+
+    private func preservedPauseStateIfNeeded(
+        from state: FocusTimerState,
+        at date: Date,
+        shouldPreservePause: Bool
+    ) -> FocusTimerState {
+        guard shouldPreservePause else { return state }
+        return engine.pause(state, now: date) ?? state
     }
 
     private var recordedTaskName: String {

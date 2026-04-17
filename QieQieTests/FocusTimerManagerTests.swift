@@ -241,6 +241,40 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(scheduler.scheduleCallCount, 1)
     }
 
+    func testSkipCurrentPhaseKeepsNextPhasesPausedWhenSkippingFromPausedState() {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults()
+        )
+
+        manager.state = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartBreak: false, autoStartNextFocus: false),
+            currentPhase: .focus,
+            cycleFocusCount: 0,
+            phaseDuration: 25 * 60,
+            endTime: clock.now().addingTimeInterval(20 * 60),
+            isPaused: true,
+            pausedAt: clock.now()
+        )
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .paused)
+        XCTAssertEqual(manager.state.remainingTime(at: clock.now()), 5 * 60)
+        XCTAssertEqual(scheduler.scheduleCallCount, 0)
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(manager.state.currentPhase, .focus)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .paused)
+        XCTAssertEqual(manager.state.remainingTime(at: clock.now()), 25 * 60)
+        XCTAssertEqual(scheduler.scheduleCallCount, 0)
+    }
+
     func testTogglePauseUsesInjectedClockForPauseAndResume() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()

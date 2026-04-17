@@ -201,7 +201,7 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    func testSkipButtonAdvancesPausedFocusToRunningBreakInPopover() throws {
+    func testSkipButtonKeepsPausedStateAcrossPhaseChangeInPopover() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let manager = FocusTimerManager(userDefaults: defaults)
         let pausedAt = Date()
@@ -229,12 +229,12 @@ final class SettingsPopoverTests: XCTestCase {
         pumpMainRunLoop()
 
         XCTAssertEqual(manager.state.currentPhase, .shortBreak)
-        XCTAssertEqual(manager.state.status, .running)
+        XCTAssertEqual(manager.state.status, .paused)
 
         let renderedImage = try XCTUnwrap(renderImage(from: host.view))
         let recognizedText = try recognizedText(in: renderedImage)
-        XCTAssertTrue(recognizedText.contains("暂停"), "Recognized text: \(recognizedText)")
-        XCTAssertFalse(recognizedText.contains("继续"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("继续"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("暂停"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
