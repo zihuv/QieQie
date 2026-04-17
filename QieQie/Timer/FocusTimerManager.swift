@@ -67,6 +67,8 @@ struct RunLoopFocusTimerTickerScheduler: FocusTimerTickerScheduling {
 final class FocusTimerManager: ObservableObject {
     @Published var state: FocusTimerState
     @Published var currentTaskName: String
+    @Published var selectedTagName: String?
+    @Published private(set) var availableTags: [String]
 
     private enum StorageKey {
         static let focusDuration = "focusTimer.configuration.focusDuration"
@@ -77,6 +79,13 @@ final class FocusTimerManager: ObservableObject {
         static let autoStartNextFocus = "focusTimer.configuration.autoStartNextFocus"
         static let autoAdvance = "focusTimer.configuration.autoAdvance"
         static let currentTaskName = "focusTimer.currentTaskName"
+        static let selectedTagName = "focusTimer.selectedTagName"
+        static let availableTags = "focusTimer.availableTags"
+    }
+
+    private struct ActiveFocusMetadata {
+        let tagName: String?
+        let note: String
     }
 
     private let engine = FocusTimerEngine()
@@ -86,7 +95,7 @@ final class FocusTimerManager: ObservableObject {
     private let focusCompletionRecorder: ((TimeInterval, Date) -> Void)?
 
     private var tickerTask: FocusTimerScheduledTask?
-    private var activeFocusTaskName: String?
+    private var activeFocusMetadata: ActiveFocusMetadata?
 
     let focusHistoryManager: FocusHistoryManager?
 
@@ -105,6 +114,10 @@ final class FocusTimerManager: ObservableObject {
         self.focusCompletionRecorder = focusCompletionRecorder
         self.state = FocusTimerEngine().makeInitialState(configuration: initialConfiguration)
         self.currentTaskName = Self.loadCurrentTaskName(from: userDefaults)
+        let loadedTags = Self.loadAvailableTags(from: userDefaults)
+        let loadedSelectedTagName = Self.loadSelectedTagName(from: userDefaults)
+        self.availableTags = FocusTagCatalog.normalizedTags(from: loadedTags + (loadedSelectedTagName.map { [$0] } ?? []))
+        self.selectedTagName = loadedSelectedTagName
     }
 
     var configuration: FocusTimerConfiguration {
@@ -125,11 +138,92 @@ final class FocusTimerManager: ObservableObject {
         persist(currentTaskName: normalized)
     }
 
+    func updateSelectedTagName(_ tagName: String?) {
+        let normalized = FocusTagCatalog.normalizeTagName(tagName)
+
+        if let normalized, !availableTags.contains(normalized) {
+            availableTags.append(normalized)
+            persist(availableTags: availableTags)
+        }
+
+        guard normalized != selectedTagName else { return }
+
+        selectedTagName = normalized
+        persist(selectedTagName: normalized)
+    }
+
+    @discardableResult
+    func addTag(_ tagName: String) -> String? {
+        guard let normalized = FocusTagCatalog.normalizeTagName(tagName) else {
+            return nil
+        }
+
+        if !availableTags.contains(normalized) {
+            availableTags.append(normalized)
+            persist(availableTags: availableTags)
+        }
+
+        updateSelectedTagName(normalized)
+        return normalized
+    }
+
+    @discardableResult
+    func removeTag(_ tagName: String) -> Bool {
+        guard let normalized = FocusTagCatalog.normalizeTagName(tagName) else { return false }
+
+        if focusHistoryManager?.deleteTag(named: normalized) == false {
+            return false
+        }
+
+        let updatedTags = availableTags.filter { $0 != normalized }
+        guard updatedTags != availableTags else { return true }
+
+        availableTags = updatedTags
+        persist(availableTags: updatedTags)
+
+        if selectedTagName == normalized {
+            selectedTagName = nil
+            persist(selectedTagName: nil)
+        }
+
+        return true
+    }
+
+    @discardableResult
+    func renameTag(from oldName: String, to newName: String) -> Bool {
+        guard
+            let normalizedOldName = FocusTagCatalog.normalizeTagName(oldName),
+            let normalizedNewName = FocusTagCatalog.normalizeTagName(newName),
+            normalizedOldName != normalizedNewName
+        else {
+            return false
+        }
+
+        if focusHistoryManager?.renameTag(from: normalizedOldName, to: normalizedNewName) == false {
+            return false
+        }
+
+        var updatedTags = availableTags.map { $0 == normalizedOldName ? normalizedNewName : $0 }
+        updatedTags = FocusTagCatalog.normalizedTags(from: updatedTags)
+        availableTags = updatedTags
+        persist(availableTags: updatedTags)
+
+        if selectedTagName == normalizedOldName {
+            selectedTagName = normalizedNewName
+            persist(selectedTagName: normalizedNewName)
+        }
+
+        return true
+    }
+
     func startCurrentPhase() {
         guard state.status(at: clock.now()) == .idle else { return }
 
         if state.currentPhase == .focus {
-            activeFocusTaskName = recordedTaskName
+            activeFocusMetadata = ActiveFocusMetadata(
+                tagName: FocusTagCatalog.normalizeTagName(selectedTagName),
+                note: recordedNote
+            )
         }
 
         stopTimer()
@@ -139,7 +233,7 @@ final class FocusTimerManager: ObservableObject {
 
     func resetCurrentPhase() {
         stopTimer()
-        activeFocusTaskName = nil
+        activeFocusMetadata = nil
         publishState(engine.reset(state))
     }
 
@@ -214,19 +308,23 @@ final class FocusTimerManager: ObservableObject {
         if let duration = result.completedFocusDuration {
             focusHistoryManager?.recordCompletedFocus(
                 duration: duration,
-                taskName: activeFocusTaskName ?? recordedTaskName,
+                tagName: activeFocusMetadata?.tagName,
+                note: activeFocusMetadata?.note ?? recordedNote,
                 completedAt: date
             )
             focusCompletionRecorder?(duration, date)
-            activeFocusTaskName = nil
+            activeFocusMetadata = nil
         }
 
         publishState(nextState)
 
         if nextState.currentPhase == .focus, nextState.status(at: date) != .idle {
-            activeFocusTaskName = recordedTaskName
+            activeFocusMetadata = ActiveFocusMetadata(
+                tagName: FocusTagCatalog.normalizeTagName(selectedTagName),
+                note: recordedNote
+            )
         } else if nextState.currentPhase != .focus {
-            activeFocusTaskName = nil
+            activeFocusMetadata = nil
         }
 
         if nextState.status(at: date) == .running {
@@ -251,6 +349,18 @@ final class FocusTimerManager: ObservableObject {
 
     private func persist(currentTaskName: String) {
         userDefaults.set(currentTaskName, forKey: StorageKey.currentTaskName)
+    }
+
+    private func persist(selectedTagName: String?) {
+        if let selectedTagName {
+            userDefaults.set(selectedTagName, forKey: StorageKey.selectedTagName)
+        } else {
+            userDefaults.removeObject(forKey: StorageKey.selectedTagName)
+        }
+    }
+
+    private func persist(availableTags: [String]) {
+        userDefaults.set(availableTags, forKey: StorageKey.availableTags)
     }
 
     private static func loadConfiguration(from userDefaults: UserDefaults) -> FocusTimerConfiguration {
@@ -281,8 +391,17 @@ final class FocusTimerManager: ObservableObject {
         normalizeTaskNameInput(userDefaults.string(forKey: StorageKey.currentTaskName) ?? "")
     }
 
+    private static func loadSelectedTagName(from userDefaults: UserDefaults) -> String? {
+        FocusTagCatalog.normalizeTagName(userDefaults.string(forKey: StorageKey.selectedTagName))
+    }
+
+    private static func loadAvailableTags(from userDefaults: UserDefaults) -> [String] {
+        let storedTags = userDefaults.stringArray(forKey: StorageKey.availableTags) ?? FocusTagCatalog.defaultTags
+        return FocusTagCatalog.normalizedTags(from: storedTags)
+    }
+
     private static func normalizeTaskNameInput(_ taskName: String) -> String {
-        taskName.replacingOccurrences(of: "\n", with: " ")
+        FocusTagCatalog.sanitize(taskName, maxLength: 80)
     }
 
     private func preservedPauseStateIfNeeded(
@@ -294,8 +413,7 @@ final class FocusTimerManager: ObservableObject {
         return engine.pause(state, now: date) ?? state
     }
 
-    private var recordedTaskName: String {
-        let trimmed = currentTaskName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "专注" : trimmed
+    private var recordedNote: String {
+        Self.normalizeTaskNameInput(currentTaskName)
     }
 }

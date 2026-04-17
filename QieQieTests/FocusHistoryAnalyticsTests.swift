@@ -3,10 +3,30 @@ import XCTest
 
 final class FocusHistoryAnalyticsTests: XCTestCase {
     func testChartDurationAxisLabelFormatsTimeValues() {
-        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 0), "0分")
-        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 25), "25分")
-        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 60), "1小时")
-        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 90), "1小时30分")
+        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 0), "0m")
+        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 25), "25m")
+        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 60), "1h")
+        XCTAssertEqual(FocusDisplayFormatter.chartDurationAxisLabel(minutes: 80), "1h20m")
+    }
+
+    func testChartLabelsUseChineseWeekdayAndMonthSymbols() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let monday = makeDate(year: 2026, month: 4, day: 13, hour: 12, minute: 0, calendar: calendar)
+        let april = makeDate(year: 2026, month: 4, day: 1, hour: 12, minute: 0, calendar: calendar)
+
+        XCTAssertEqual(
+            FocusDisplayFormatter.chartLabel(for: monday, granularity: .week, calendar: calendar),
+            "一"
+        )
+        XCTAssertEqual(
+            FocusDisplayFormatter.chartLabel(for: monday, granularity: .month, calendar: calendar),
+            "13"
+        )
+        XCTAssertEqual(
+            FocusDisplayFormatter.chartLabel(for: april, granularity: .year, calendar: calendar),
+            "4月"
+        )
     }
 
     func testCompactDurationFormatsDashboardValues() {
@@ -179,8 +199,72 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(trend.map(\.totalDuration), [0, 0, 1800, 0, 0, 1200, 1500])
     }
 
+    func testPageSnapshotBuildsChronologicalWeekTrendAndTagBreakdown() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        calendar.firstWeekday = 2
+        calendar.minimumDaysInFirstWeek = 4
+
+        let weekAnchor = makeDate(year: 2026, month: 4, day: 13, hour: 12, minute: 0, calendar: calendar)
+        let sessions = [
+            makeSession(
+                taskName: "接口联调",
+                tagName: "开发",
+                note: "接口联调",
+                startTime: makeDate(year: 2026, month: 4, day: 13, hour: 9, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 4, day: 13, hour: 9, minute: 25, calendar: calendar),
+                duration: 1500,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "读论文",
+                tagName: "学习",
+                note: "读论文",
+                startTime: makeDate(year: 2026, month: 4, day: 15, hour: 10, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 4, day: 15, hour: 10, minute: 40, calendar: calendar),
+                duration: 2400,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "专注",
+                tagName: nil,
+                note: nil,
+                startTime: makeDate(year: 2026, month: 4, day: 18, hour: 8, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 4, day: 18, hour: 8, minute: 30, calendar: calendar),
+                duration: 1800,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "下周准备",
+                tagName: "会议",
+                note: "下周准备",
+                startTime: makeDate(year: 2026, month: 4, day: 20, hour: 8, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 4, day: 20, hour: 8, minute: 30, calendar: calendar),
+                duration: 1800,
+                isCompleted: true
+            )
+        ]
+
+        let snapshot = FocusHistoryAnalytics.pageSnapshot(
+            from: sessions,
+            query: FocusStatisticsQuery(granularity: .week, anchorDate: weekAnchor),
+            now: weekAnchor,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(snapshot.tagSummaries.map(\.tagName), ["学习", "未分类", "开发"])
+        XCTAssertEqual(snapshot.tagSummaries.map(\.sessionCount), [1, 1, 1])
+        XCTAssertEqual(snapshot.trendPoints.count, 7)
+        XCTAssertEqual(snapshot.trendPoints.map(\.label), ["日", "一", "二", "三", "四", "五", "六"])
+        XCTAssertEqual(snapshot.trendPoints.map(\.sessionCount), [0, 1, 0, 1, 0, 0, 1])
+        XCTAssertEqual(snapshot.trendPoints.map(\.totalDuration), [0, 1500, 0, 2400, 0, 0, 1800])
+        XCTAssertEqual(snapshot.recentSessions.map(\.taskName), ["专注", "读论文", "接口联调"])
+    }
+
     private func makeSession(
         taskName: String = "专注",
+        tagName: String? = nil,
+        note: String? = nil,
         startTime: Date,
         endTime: Date,
         duration: TimeInterval,
@@ -188,6 +272,8 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
     ) -> FocusSession {
         FocusSession(
             taskName: taskName,
+            tagName: tagName,
+            note: note,
             startTime: startTime,
             endTime: endTime,
             duration: duration,

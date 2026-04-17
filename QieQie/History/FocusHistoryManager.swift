@@ -24,9 +24,27 @@ final class FocusHistoryManager: ObservableObject {
         taskName: String = "专注",
         completedAt: Date = Date()
     ) {
+        recordCompletedFocus(
+            duration: duration,
+            tagName: nil,
+            note: taskName,
+            completedAt: completedAt
+        )
+    }
+
+    func recordCompletedFocus(
+        duration: TimeInterval,
+        tagName: String?,
+        note: String,
+        completedAt: Date = Date()
+    ) {
         let clampedDuration = max(0, duration)
+        let normalizedNote = normalizedNote(note)
+        let normalizedTagName = FocusTagCatalog.normalizeTagName(tagName)
         let session = FocusSession(
-            taskName: normalizedTaskName(taskName),
+            taskName: storedTaskName(note: normalizedNote, tagName: normalizedTagName),
+            tagName: normalizedTagName,
+            note: normalizedNote.isEmpty ? nil : normalizedNote,
             startTime: completedAt.addingTimeInterval(-clampedDuration),
             endTime: completedAt,
             duration: clampedDuration,
@@ -66,6 +84,10 @@ final class FocusHistoryManager: ObservableObject {
         )
     }
 
+    func getStatisticsPageSnapshot(query: FocusStatisticsQuery) -> FocusStatisticsPageSnapshot {
+        FocusHistoryAnalytics.pageSnapshot(from: getAllSessions(), query: query)
+    }
+
     func getAllSessions() -> [FocusSession] {
         let descriptor = FetchDescriptor<FocusSession>(
             sortBy: [SortDescriptor(\.startTime, order: .reverse)]
@@ -79,8 +101,75 @@ final class FocusHistoryManager: ObservableObject {
         }
     }
 
-    private func normalizedTaskName(_ taskName: String) -> String {
-        let trimmed = taskName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "专注" : trimmed
+    @discardableResult
+    func renameTag(from oldName: String, to newName: String) -> Bool {
+        guard
+            let normalizedOldName = FocusTagCatalog.normalizeTagName(oldName),
+            let normalizedNewName = FocusTagCatalog.normalizeTagName(newName),
+            normalizedOldName != normalizedNewName
+        else {
+            return false
+        }
+
+        let sessionsToUpdate = getAllSessions().filter { $0.normalizedTagName == normalizedOldName }
+        guard !sessionsToUpdate.isEmpty else { return true }
+
+        for session in sessionsToUpdate {
+            session.tagName = normalizedNewName
+
+            if session.note == nil, FocusTagCatalog.sanitize(session.taskName) == normalizedOldName {
+                session.taskName = normalizedNewName
+            }
+        }
+
+        do {
+            try modelContext.save()
+            return true
+        } catch {
+            logger.error("Failed to rename tag: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    @discardableResult
+    func deleteTag(named tagName: String) -> Bool {
+        guard let normalizedTagName = FocusTagCatalog.normalizeTagName(tagName) else {
+            return false
+        }
+
+        let sessionsToUpdate = getAllSessions().filter { $0.normalizedTagName == normalizedTagName }
+        guard !sessionsToUpdate.isEmpty else { return true }
+
+        for session in sessionsToUpdate {
+            session.tagName = nil
+
+            if session.note == nil, FocusTagCatalog.sanitize(session.taskName) == normalizedTagName {
+                session.taskName = "专注"
+            }
+        }
+
+        do {
+            try modelContext.save()
+            return true
+        } catch {
+            logger.error("Failed to delete tag: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+    }
+
+    private func normalizedNote(_ note: String) -> String {
+        FocusTagCatalog.sanitize(note, maxLength: 80)
+    }
+
+    private func storedTaskName(note: String, tagName: String?) -> String {
+        if !note.isEmpty {
+            return note
+        }
+
+        if let tagName {
+            return tagName
+        }
+
+        return "专注"
     }
 }

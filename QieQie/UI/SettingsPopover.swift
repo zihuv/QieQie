@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum SettingsPopoverInitialPanel {
@@ -7,9 +8,9 @@ enum SettingsPopoverInitialPanel {
 }
 
 enum SettingsPopoverLayout {
-    static let mainSize = FocusPanelLayout.unifiedPanelSize
-    static let settingsSize = FocusPanelLayout.unifiedPanelSize
-    static let statisticsSize = FocusPanelLayout.unifiedPanelSize
+    static let mainSize = CGSize(width: 252, height: 340)
+    static let settingsSize = CGSize(width: 248, height: 320)
+    static let statisticsSize = CGSize(width: 252, height: 320)
 }
 
 enum FocusTimerAccessibilityID {
@@ -36,6 +37,8 @@ enum FocusTimerAccessibilityID {
         static let autoStartNextFocusToggle = "settingsPopover.autoStartNextFocusToggle"
         static let autoStartBreakToggle = "settingsPopover.autoStartBreakToggle"
         static let statisticsDetailButton = "settingsPopover.statisticsDetailButton"
+        static let tagEditorField = "settingsPopover.tagEditorField"
+        static let categoryPicker = "settingsPopover.categoryPicker"
     }
 
     enum StatusBar {
@@ -51,11 +54,47 @@ struct SettingsPopover: View {
         case statistics
     }
 
+    private enum TagEditorMode: Equatable {
+        case create
+        case rename(originalName: String)
+
+        var title: String {
+            switch self {
+            case .create:
+                return "新建分类"
+            case .rename:
+                return "重命名分类"
+            }
+        }
+
+        var confirmTitle: String {
+            switch self {
+            case .create:
+                return "添加"
+            case .rename:
+                return "保存"
+            }
+        }
+
+        var placeholder: String {
+            switch self {
+            case .create:
+                return "输入分类名"
+            case .rename:
+                return "输入新分类名"
+            }
+        }
+    }
+
     @ObservedObject var focusTimerManager: FocusTimerManager
 
     @State private var panel: Panel = .main
+    @State private var isCategoryPickerPresented = false
     @State private var isQuickFocusDurationEditorPresented = false
+    @State private var isTagEditorPresented = false
+    @State private var tagEditorMode: TagEditorMode = .create
     @State private var quickFocusMinutes = "25"
+    @State private var newTagName = ""
     @State private var quickFocusDurationToggleGate = TransientPopoverToggleGate()
     @State private var focusMinutes = "25"
     @State private var shortBreakMinutes = "5"
@@ -66,6 +105,7 @@ struct SettingsPopover: View {
     @State private var dashboardStats = FocusStatistics()
     @State private var recentSessions: [FocusSession] = []
     @FocusState private var isQuickFocusDurationFieldFocused: Bool
+    @FocusState private var isTagEditorFieldFocused: Bool
     private let onPreferredSizeChange: ((CGSize) -> Void)?
     private let onOpenStatistics: (() -> Void)?
 
@@ -129,15 +169,20 @@ struct SettingsPopover: View {
                 isQuickFocusDurationFieldFocused = false
             }
         }
+        .onChange(of: isTagEditorPresented) { _, isPresented in
+            if !isPresented {
+                newTagName = ""
+                isTagEditorFieldFocused = false
+            }
+        }
     }
 
     private var mainContent: some View {
         VStack(spacing: 10) {
             headerRow(title: focusTimerManager.state.currentPhase.title, showsBack: false)
             quickFocusDurationSection
-            taskNameSection
+            taskMetadataSection
             statisticsSection
-            Spacer(minLength: 0)
             controlSection
         }
         .padding(FocusPanelChrome.compactPadding)
@@ -236,12 +281,12 @@ struct SettingsPopover: View {
     private var statisticsContent: some View {
         VStack(spacing: 0) {
             PopoverHeaderBar(
-                title: "统计",
+                title: "统计概览",
                 backAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.backButton,
                 onBack: { panel = .main }
             ) {
                 Button(action: openStatisticsWindow) {
-                    Text("详情")
+                    Text("统计")
                         .font(FocusPanelTypography.supportingText)
                 }
                 .buttonStyle(.plain)
@@ -373,19 +418,115 @@ struct SettingsPopover: View {
         }
     }
 
-    private var taskNameSection: some View {
+    private var taskMetadataSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("当前任务")
+            Text("分类与说明")
                 .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
 
-            TextField("输入任务", text: taskNameBinding)
-                .textFieldStyle(.plain)
-                .lineLimit(1)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 9)
-                .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
+            HStack(spacing: 8) {
+                categoryPickerField
+
+                TextField("补充说明", text: taskNameBinding)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1)
+                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
+            }
+        }
+        .popover(
+            isPresented: $isTagEditorPresented,
+            attachmentAnchor: .point(.bottom),
+            arrowEdge: .top
+        ) {
+            tagEditor
+        }
+    }
+
+    private var tagEditor: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(tagEditorMode.title)
+                .font(FocusPanelTypography.sectionTitle)
+
+            TextField(tagEditorMode.placeholder, text: $newTagName)
+                .textFieldStyle(.roundedBorder)
+                .focused($isTagEditorFieldFocused)
+                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.tagEditorField)
+                .onChange(of: newTagName) { _, newValue in
+                    newTagName = FocusTagCatalog.sanitize(
+                        newValue,
+                        maxLength: FocusTagCatalog.maxTagLength
+                    )
+                }
+                .onSubmit(submitTagEditor)
+
+            HStack(spacing: 8) {
+                Button("取消", role: .cancel, action: dismissTagEditor)
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+
+                Button(tagEditorMode.confirmTitle, action: submitTagEditor)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canSubmitTagEditor)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(14)
+        .frame(width: 208)
+        .onAppear {
+            if tagEditorMode == .create {
+                newTagName = ""
+            } else {
+                switch tagEditorMode {
+                case .create:
+                    newTagName = ""
+                case .rename(let originalName):
+                    newTagName = originalName
+                }
+            }
+
+            Task { @MainActor in
+                isTagEditorFieldFocused = true
+            }
+        }
+    }
+
+    private var categoryPickerField: some View {
+        Button(action: toggleCategoryPicker) {
+            HStack(spacing: 8) {
+                Text(selectedTagTitle)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .font(FocusPanelTypography.bodyLabel)
+            .foregroundColor(.primary)
+            .padding(.horizontal, 10)
+            .frame(width: 104, height: 34, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
+        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.categoryPicker)
+        .popover(
+            isPresented: $isCategoryPickerPresented,
+            attachmentAnchor: .point(.bottom),
+            arrowEdge: .top
+        ) {
+            CategoryPickerPopoverContent(
+                availableTags: focusTimerManager.availableTags,
+                selectedTagName: focusTimerManager.selectedTagName,
+                untaggedTitle: FocusTagCatalog.untaggedName,
+                onSelectTag: selectTagFromPicker,
+                onCreateTag: openCreateTagEditor,
+                onRenameTag: openRenameTagEditor(for:),
+                onDeleteTag: deleteTag
+            )
         }
     }
 
@@ -660,6 +801,56 @@ struct SettingsPopover: View {
         onPreferredSizeChange?(preferredSize)
     }
 
+    private func toggleCategoryPicker() {
+        isCategoryPickerPresented.toggle()
+    }
+
+    private func openCreateTagEditor() {
+        isCategoryPickerPresented = false
+        tagEditorMode = .create
+        DispatchQueue.main.async {
+            isTagEditorPresented = true
+        }
+    }
+
+    private func openRenameTagEditor(for tagName: String) {
+        guard FocusTagCatalog.normalizeTagName(tagName) != nil else { return }
+        isCategoryPickerPresented = false
+        tagEditorMode = .rename(originalName: tagName)
+        DispatchQueue.main.async {
+            isTagEditorPresented = true
+        }
+    }
+
+    private func dismissTagEditor() {
+        isTagEditorPresented = false
+        newTagName = ""
+        isTagEditorFieldFocused = false
+    }
+
+    private func deleteTag(_ tagName: String) {
+        isCategoryPickerPresented = false
+        _ = focusTimerManager.removeTag(tagName)
+    }
+
+    private func selectTagFromPicker(_ tagName: String?) {
+        focusTimerManager.updateSelectedTagName(tagName)
+        isCategoryPickerPresented = false
+    }
+
+    private func submitTagEditor() {
+        guard canSubmitTagEditor else { return }
+
+        switch tagEditorMode {
+        case .create:
+            _ = focusTimerManager.addTag(newTagName)
+        case .rename(let originalName):
+            _ = focusTimerManager.renameTag(from: originalName, to: newTagName)
+        }
+
+        dismissTagEditor()
+    }
+
     private func toggleQuickFocusDurationEditor() {
         if quickFocusDurationToggleGate.consumeDismissIfNeeded(at: Date()) {
             return
@@ -713,6 +904,24 @@ struct SettingsPopover: View {
         guard let minutes = Int(quickFocusMinutes) else { return false }
         return minutes > 0
     }
+
+    private var selectedTagTitle: String {
+        focusTimerManager.selectedTagName ?? FocusTagCatalog.untaggedName
+    }
+
+    private var canSubmitTagEditor: Bool {
+        guard let normalized = FocusTagCatalog.normalizeTagName(newTagName) else { return false }
+
+        switch tagEditorMode {
+        case .create:
+            return !focusTimerManager.availableTags.contains(normalized)
+        case .rename(let originalName):
+            if normalized == originalName {
+                return false
+            }
+            return !focusTimerManager.availableTags.contains(normalized)
+        }
+    }
 }
 
 struct SettingsPopover_Previews: PreviewProvider {
@@ -742,5 +951,276 @@ struct TransientPopoverToggleGate {
         }
 
         return shouldSuppress
+    }
+}
+
+private struct CategoryPickerPopoverContent: View {
+    let availableTags: [String]
+    let selectedTagName: String?
+    let untaggedTitle: String
+    let onSelectTag: (String?) -> Void
+    let onCreateTag: () -> Void
+    let onRenameTag: (String) -> Void
+    let onDeleteTag: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button(action: { onSelectTag(nil) }) {
+                pickerRowLabel(title: untaggedTitle, isSelected: selectedTagName == nil)
+            }
+            .buttonStyle(.plain)
+
+            if !availableTags.isEmpty {
+                Divider()
+                    .padding(.vertical, 2)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 4) {
+                        ForEach(availableTags, id: \.self) { tag in
+                            CategoryPickerTagRowView(
+                                title: tag,
+                                isSelected: selectedTagName == tag,
+                                accessibilityIdentifier: "categoryPicker.row.\(tag)",
+                                onSelect: { onSelectTag(tag) },
+                                onRename: { onRenameTag(tag) },
+                                onDelete: { onDeleteTag(tag) }
+                            )
+                            .frame(height: 30)
+                        }
+                    }
+                }
+                .frame(maxHeight: min(CGFloat(availableTags.count) * 34, 180))
+            }
+
+            Divider()
+                .padding(.top, 2)
+
+            Button(action: onCreateTag) {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("新建分类")
+                    Spacer(minLength: 0)
+                }
+                .font(FocusPanelTypography.bodyLabel)
+                .foregroundColor(.primary)
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.primary.opacity(0.04))
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .frame(width: 188)
+    }
+
+    private func pickerRowLabel(title: String, isSelected: Bool) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.accentColor)
+            }
+        }
+        .font(FocusPanelTypography.bodyLabel)
+        .foregroundColor(.primary)
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+        )
+    }
+}
+
+struct CategoryPickerTagRowView: NSViewRepresentable {
+    let title: String
+    let isSelected: Bool
+    let accessibilityIdentifier: String?
+    let onSelect: () -> Void
+    let onRename: () -> Void
+    let onDelete: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            onSelect: onSelect,
+            onRename: onRename,
+            onDelete: onDelete
+        )
+    }
+
+    func makeNSView(context: Context) -> CategoryPickerTagRowControl {
+        let view = CategoryPickerTagRowControl()
+        if let accessibilityIdentifier {
+            view.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
+        }
+        view.coordinator = context.coordinator
+        view.title = title
+        view.isSelected = isSelected
+        return view
+    }
+
+    func updateNSView(_ nsView: CategoryPickerTagRowControl, context: Context) {
+        context.coordinator.onSelect = onSelect
+        context.coordinator.onRename = onRename
+        context.coordinator.onDelete = onDelete
+        nsView.coordinator = context.coordinator
+        nsView.title = title
+        nsView.isSelected = isSelected
+    }
+
+    final class Coordinator: NSObject {
+        var onSelect: () -> Void
+        var onRename: () -> Void
+        var onDelete: () -> Void
+
+        init(
+            onSelect: @escaping () -> Void,
+            onRename: @escaping () -> Void,
+            onDelete: @escaping () -> Void
+        ) {
+            self.onSelect = onSelect
+            self.onRename = onRename
+            self.onDelete = onDelete
+        }
+
+        func showContextMenu(from view: NSView) {
+            let menu = makeContextMenu()
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.bounds.maxY - 2), in: view)
+        }
+
+        func makeContextMenu() -> NSMenu {
+            let menu = NSMenu()
+            menu.addItem(menuItem(title: "重命名分类…") { [weak self] in
+                self?.onRename()
+            })
+            menu.addItem(menuItem(title: "删除分类") { [weak self] in
+                self?.onDelete()
+            })
+            return menu
+        }
+
+        @objc
+        private func handleMenuItem(_ sender: NSMenuItem) {
+            (sender.representedObject as? CategoryPickerMenuAction)?.handler()
+        }
+
+        private func menuItem(title: String, handler: @escaping () -> Void) -> NSMenuItem {
+            let item = NSMenuItem(title: title, action: #selector(handleMenuItem(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = CategoryPickerMenuAction(handler: handler)
+            return item
+        }
+    }
+}
+
+final class CategoryPickerTagRowControl: NSControl {
+    weak var coordinator: CategoryPickerTagRowView.Coordinator?
+    private let titleField = NSTextField(labelWithString: "")
+    private let checkmarkImageView = NSImageView()
+
+    var title: String = "" {
+        didSet {
+            titleField.stringValue = title
+        }
+    }
+
+    var isSelected: Bool = false {
+        didSet {
+            updateSelectionState()
+        }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        setupView()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        bounds.contains(point) ? self : nil
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.modifierFlags.contains(.control) {
+            coordinator?.showContextMenu(from: self)
+            return
+        }
+
+        coordinator?.onSelect()
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        coordinator?.showContextMenu(from: self)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        coordinator?.makeContextMenu()
+    }
+
+    private func setupView() {
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.masksToBounds = true
+
+        titleField.translatesAutoresizingMaskIntoConstraints = false
+        titleField.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        titleField.textColor = .labelColor
+        titleField.lineBreakMode = .byTruncatingTail
+        titleField.maximumNumberOfLines = 1
+        titleField.cell?.wraps = false
+        titleField.cell?.isScrollable = true
+        titleField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
+        checkmarkImageView.image = NSImage(
+            systemSymbolName: "checkmark",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(.init(pointSize: 10, weight: .semibold))
+        checkmarkImageView.contentTintColor = .controlAccentColor
+        checkmarkImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        addSubview(titleField)
+        addSubview(checkmarkImageView)
+
+        NSLayoutConstraint.activate([
+            titleField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            titleField.trailingAnchor.constraint(lessThanOrEqualTo: checkmarkImageView.leadingAnchor, constant: -8),
+            titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
+            checkmarkImageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            checkmarkImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            checkmarkImageView.widthAnchor.constraint(equalToConstant: 10),
+            checkmarkImageView.heightAnchor.constraint(equalToConstant: 10)
+        ])
+
+        updateSelectionState()
+    }
+
+    private func updateSelectionState() {
+        layer?.backgroundColor = (
+            isSelected ? NSColor.controlAccentColor.withAlphaComponent(0.12) : NSColor.labelColor.withAlphaComponent(0.04)
+        ).cgColor
+        checkmarkImageView.isHidden = !isSelected
+    }
+}
+
+private final class CategoryPickerMenuAction: NSObject {
+    let handler: () -> Void
+
+    init(handler: @escaping () -> Void) {
+        self.handler = handler
     }
 }

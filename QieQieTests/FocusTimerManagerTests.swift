@@ -11,6 +11,13 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertFalse(manager.configuration.autoStartNextFocus)
     }
 
+    func testFreshManagerStartsWithoutBuiltInTags() {
+        let manager = FocusTimerManager(userDefaults: makeUserDefaults())
+
+        XCTAssertTrue(manager.availableTags.isEmpty)
+        XCTAssertNil(manager.selectedTagName)
+    }
+
     func testConfigurationPersistsAcrossManagerInstances() {
         let defaults = makeUserDefaults()
         let firstManager = FocusTimerManager(userDefaults: defaults)
@@ -50,6 +57,84 @@ final class FocusTimerManagerTests: XCTestCase {
         let secondManager = FocusTimerManager(userDefaults: defaults)
 
         XCTAssertEqual(secondManager.currentTaskName, "写周报")
+    }
+
+    func testSelectedTagPersistsAcrossManagerInstances() {
+        let defaults = makeUserDefaults()
+        let firstManager = FocusTimerManager(userDefaults: defaults)
+
+        firstManager.updateSelectedTagName("开发")
+
+        let secondManager = FocusTimerManager(userDefaults: defaults)
+
+        XCTAssertEqual(secondManager.selectedTagName, "开发")
+    }
+
+    func testAddTagPersistsAcrossManagerInstances() {
+        let defaults = makeUserDefaults()
+        let firstManager = FocusTimerManager(userDefaults: defaults)
+
+        firstManager.addTag("毕设")
+
+        let secondManager = FocusTimerManager(userDefaults: defaults)
+
+        XCTAssertTrue(secondManager.availableTags.contains("毕设"))
+        XCTAssertEqual(secondManager.selectedTagName, "毕设")
+    }
+
+    func testRenameTagUpdatesSelectionAvailableTagsAndHistorySessions() throws {
+        let defaults = makeUserDefaults()
+        let historyManager = try makeHistoryManager()
+        historyManager.recordCompletedFocus(
+            duration: 25 * 60,
+            tagName: "开发",
+            note: "",
+            completedAt: Date(timeIntervalSinceReferenceDate: 200)
+        )
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
+
+        manager.updateSelectedTagName("开发")
+        let renamed = manager.renameTag(from: "开发", to: "深度开发")
+
+        XCTAssertTrue(renamed)
+        XCTAssertEqual(manager.selectedTagName, "深度开发")
+        XCTAssertTrue(manager.availableTags.contains("深度开发"))
+        XCTAssertFalse(manager.availableTags.contains("开发"))
+
+        let session = try XCTUnwrap(historyManager.getAllSessions().first)
+        XCTAssertEqual(session.tagName, "深度开发")
+        XCTAssertEqual(session.taskName, "深度开发")
+        XCTAssertNil(session.displayNote)
+    }
+
+    func testRemoveTagClearsSelectionAvailableTagsAndHistorySessions() throws {
+        let defaults = makeUserDefaults()
+        let historyManager = try makeHistoryManager()
+        historyManager.recordCompletedFocus(
+            duration: 25 * 60,
+            tagName: "开发",
+            note: "",
+            completedAt: Date(timeIntervalSinceReferenceDate: 200)
+        )
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
+
+        manager.updateSelectedTagName("开发")
+        let removed = manager.removeTag("开发")
+
+        XCTAssertTrue(removed)
+        XCTAssertNil(manager.selectedTagName)
+        XCTAssertFalse(manager.availableTags.contains("开发"))
+
+        let session = try XCTUnwrap(historyManager.getAllSessions().first)
+        XCTAssertNil(session.tagName)
+        XCTAssertEqual(session.displayTagName, "未分类")
+        XCTAssertNil(session.displayNote)
     }
 
     func testStartUsesInjectedClockAndSchedulesRepeatingTick() {
@@ -139,7 +224,7 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(recordedDurations, [TimeInterval(25 * 60)])
     }
 
-    func testProcessTimerTickRecordsTaskNameCapturedWhenFocusStarts() throws {
+    func testProcessTimerTickRecordsTagAndNoteCapturedWhenFocusStarts() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
         let historyManager = try makeHistoryManager()
@@ -150,8 +235,10 @@ final class FocusTimerManagerTests: XCTestCase {
             userDefaults: makeUserDefaults()
         )
 
+        manager.updateSelectedTagName("开发")
         manager.updateCurrentTaskName("设计评审")
         manager.startCurrentPhase()
+        manager.updateSelectedTagName("会议")
         manager.updateCurrentTaskName("整理邮件")
 
         clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
@@ -160,6 +247,8 @@ final class FocusTimerManagerTests: XCTestCase {
         let sessions = historyManager.getAllSessions()
         XCTAssertEqual(sessions.count, 1)
         XCTAssertEqual(sessions.first?.taskName, "设计评审")
+        XCTAssertEqual(sessions.first?.tagName, "开发")
+        XCTAssertEqual(sessions.first?.note, "设计评审")
     }
 
     func testProcessTimerTickRecordsCompletedFocusWithTimeRange() throws {

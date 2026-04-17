@@ -78,9 +78,10 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    func testMainPanelShowsTaskInputFieldAndCurrentTaskName() throws {
+    func testMainPanelShowsTagSelectorAndNoteField() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let manager = FocusTimerManager(userDefaults: defaults)
+        manager.updateSelectedTagName("开发")
         manager.updateCurrentTaskName("整理需求")
         let host = NSHostingController(
             rootView: SettingsPopover(focusTimerManager: manager)
@@ -95,7 +96,77 @@ final class SettingsPopoverTests: XCTestCase {
 
         let taskField = try XCTUnwrap(findEditableTextFields(in: host.view).first)
         XCTAssertEqual(taskField.stringValue, "整理需求")
-        XCTAssertEqual(taskField.placeholderString, "输入任务")
+        XCTAssertEqual(taskField.placeholderString, "补充说明")
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+        XCTAssertTrue(recognizedText.contains("开发"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
+    func testCategoryPickerTagRowProvidesContextMenuWithoutBeingSelected() throws {
+        let host = NSHostingController(
+            rootView: CategoryPickerTagRowView(
+                title: "开发",
+                isSelected: false,
+                accessibilityIdentifier: "categoryPicker.row.开发",
+                onSelect: {},
+                onRename: {},
+                onDelete: {}
+            )
+        )
+        let window = makeWindow(size: CGSize(width: 188, height: 40))
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let categoryRow = try XCTUnwrap(
+            findView(
+                in: host.view,
+                matchingIdentifier: "categoryPicker.row.开发"
+            )
+        )
+        let menu = try XCTUnwrap(categoryRow.menu(for: makeRightMouseEvent(windowNumber: window.windowNumber)))
+
+        XCTAssertEqual(menu.items.map(\.title), ["重命名分类…", "删除分类"])
+        XCTAssertTrue(menu.items.allSatisfy(\.isEnabled))
+
+        window.orderOut(nil)
+    }
+
+    func testCategoryPickerTagRowInvokesSelectionOnLeftClick() throws {
+        var didSelect = false
+        let host = NSHostingController(
+            rootView: CategoryPickerTagRowView(
+                title: "开发",
+                isSelected: false,
+                accessibilityIdentifier: "categoryPicker.row.开发",
+                onSelect: { didSelect = true },
+                onRename: {},
+                onDelete: {}
+            )
+        )
+        let window = makeWindow(size: CGSize(width: 188, height: 40))
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let categoryRow = try XCTUnwrap(
+            findView(
+                in: host.view,
+                matchingIdentifier: "categoryPicker.row.开发"
+            )
+        )
+        categoryRow.mouseDown(with: makeLeftMouseEvent(windowNumber: window.windowNumber))
+
+        XCTAssertTrue(didSelect)
 
         window.orderOut(nil)
     }
@@ -281,8 +352,9 @@ final class SettingsPopoverTests: XCTestCase {
         let renderedImage = try XCTUnwrap(renderImage(from: host.view))
         let recognizedText = try recognizedText(in: renderedImage)
 
-        XCTAssertTrue(recognizedText.contains("今日"), "Recognized text: \(recognizedText)")
-        XCTAssertTrue(recognizedText.contains("本周"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("概览"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("专注详情"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("专注记录"), "Recognized text: \(recognizedText)")
         XCTAssertFalse(recognizedText.contains("返回"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
@@ -398,23 +470,15 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertTrue(imageContainsGreenPixels(renderedImage))
     }
 
-    func testPopoverLayoutUsesDedicatedPanelSizes() {
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.width, FocusPanelLayout.unifiedPanelSize.width)
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, FocusPanelLayout.unifiedPanelSize.height)
-        XCTAssertEqual(SettingsPopoverLayout.settingsSize.width, FocusPanelLayout.unifiedPanelSize.width)
-        XCTAssertEqual(SettingsPopoverLayout.settingsSize.height, FocusPanelLayout.unifiedPanelSize.height)
-        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.width, FocusPanelLayout.unifiedPanelSize.width)
-        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.height, FocusPanelLayout.unifiedPanelSize.height)
-        XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, FocusPanelLayout.unifiedPanelSize.width)
-        XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, FocusPanelLayout.unifiedPanelSize.height)
-        XCTAssertEqual(StatisticsWindowLayout.minSize.width, FocusPanelLayout.unifiedPanelSize.width)
-        XCTAssertEqual(StatisticsWindowLayout.minSize.height, FocusPanelLayout.unifiedPanelSize.height)
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.width, SettingsPopoverLayout.settingsSize.width)
-        XCTAssertEqual(SettingsPopoverLayout.mainSize.height, SettingsPopoverLayout.settingsSize.height)
-        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.width, SettingsPopoverLayout.settingsSize.width)
-        XCTAssertEqual(SettingsPopoverLayout.statisticsSize.height, SettingsPopoverLayout.settingsSize.height)
-        XCTAssertEqual(StatisticsWindowLayout.defaultSize.width, SettingsPopoverLayout.settingsSize.width)
-        XCTAssertEqual(StatisticsWindowLayout.defaultSize.height, SettingsPopoverLayout.settingsSize.height)
+    func testPopoverLayoutUsesUpdatedMainPanelAndLargerStatisticsWindow() {
+        XCTAssertGreaterThan(SettingsPopoverLayout.mainSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertGreaterThan(SettingsPopoverLayout.mainSize.height, FocusPanelLayout.unifiedPanelSize.height)
+        XCTAssertGreaterThanOrEqual(SettingsPopoverLayout.settingsSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertGreaterThanOrEqual(SettingsPopoverLayout.statisticsSize.width, FocusPanelLayout.unifiedPanelSize.width)
+        XCTAssertGreaterThan(StatisticsWindowLayout.defaultSize.width, SettingsPopoverLayout.statisticsSize.width)
+        XCTAssertGreaterThan(StatisticsWindowLayout.defaultSize.height, SettingsPopoverLayout.statisticsSize.height)
+        XCTAssertLessThanOrEqual(StatisticsWindowLayout.minSize.width, StatisticsWindowLayout.defaultSize.width)
+        XCTAssertLessThanOrEqual(StatisticsWindowLayout.minSize.height, StatisticsWindowLayout.defaultSize.height)
     }
 
     func testPreferredSizeCallbackMatchesCurrentPanel() throws {
@@ -569,6 +633,61 @@ final class SettingsPopoverTests: XCTestCase {
 
     private func findEditableTextFields(in view: NSView) -> [NSTextField] {
         findTextFields(in: view).filter(\.isEditable)
+    }
+
+    private func findView(in view: NSView, matchingIdentifier identifier: String) -> NSView? {
+        if view.identifier?.rawValue == identifier {
+            return view
+        }
+
+        for subview in view.subviews {
+            if let match = findView(in: subview, matchingIdentifier: identifier) {
+                return match
+            }
+        }
+
+        return nil
+    }
+
+    private func findButtons(in view: NSView) -> [NSButton] {
+        var matches: [NSButton] = []
+        if let button = view as? NSButton {
+            matches.append(button)
+        }
+
+        for subview in view.subviews {
+            matches.append(contentsOf: findButtons(in: subview))
+        }
+
+        return matches
+    }
+
+    private func makeRightMouseEvent(windowNumber: Int) -> NSEvent {
+        NSEvent.mouseEvent(
+            with: .rightMouseDown,
+            location: NSPoint(x: 12, y: 12),
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 1,
+            pressure: 1
+        )!
+    }
+
+    private func makeLeftMouseEvent(windowNumber: Int) -> NSEvent {
+        NSEvent.mouseEvent(
+            with: .leftMouseDown,
+            location: NSPoint(x: 12, y: 12),
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 1,
+            pressure: 1
+        )!
     }
 
     private func findSwitches(in view: NSView) -> [NSSwitch] {
