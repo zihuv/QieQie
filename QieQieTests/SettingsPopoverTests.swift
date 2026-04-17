@@ -197,6 +197,29 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
+    func testMainPanelKeepsBottomControlsVisibleAfterHeightTrim() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        let host = NSHostingController(
+            rootView: SettingsPopover(focusTimerManager: manager)
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.mainSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+
+        XCTAssertTrue(recognizedText.contains("开始"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("跳过"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
     func testConfigurationFieldsReflectManagerSettings() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let manager = FocusTimerManager(userDefaults: defaults)
