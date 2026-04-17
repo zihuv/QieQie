@@ -360,6 +360,41 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
+    func testHistoryViewRefreshesWhenReopened() throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let historyManager = FocusHistoryManager(modelContainer: container)
+        let initialHost = NSHostingController(rootView: HistoryView(historyManager: historyManager))
+        let window = makeWindow(size: StatisticsWindowLayout.defaultSize)
+
+        window.contentViewController = initialHost
+        window.makeKeyAndOrderFront(nil)
+        _ = initialHost.view
+        initialHost.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        historyManager.recordCompletedFocus(
+            duration: 40 * 60,
+            taskName: "ReloadCheck",
+            completedAt: Date()
+        )
+        let reopenedHost = NSHostingController(rootView: HistoryView(historyManager: historyManager))
+        window.contentViewController = reopenedHost
+        pumpMainRunLoop()
+        _ = reopenedHost.view
+        reopenedHost.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let renderedImage = try XCTUnwrap(renderImage(from: reopenedHost.view))
+        let recognizedText = try recognizedText(in: renderedImage)
+
+        XCTAssertTrue(recognizedText.contains("ReloadCheck"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("40m"), "Recognized text: \(recognizedText)")
+        XCTAssertFalse(recognizedText.contains("当前周期没有已完成的专注记录"), "Recognized text: \(recognizedText)")
+
+        window.orderOut(nil)
+    }
+
     func testStatisticsOverviewPanelShowsSummaryAndRecentRecord() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: FocusSession.self, configurations: configuration)

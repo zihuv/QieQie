@@ -395,7 +395,7 @@ final class StatusBarManager: NSObject, NSPopoverDelegate {
 @MainActor
 private final class StatisticsWindowController: NSWindowController {
     private let historyManager: FocusHistoryManager
-    private let hostingController: NSHostingController<HistoryView>
+    private var hostingController: NSHostingController<HistoryView>
 
     init(historyManager: FocusHistoryManager) {
         self.historyManager = historyManager
@@ -429,7 +429,11 @@ private final class StatisticsWindowController: NSWindowController {
 
     func showWindow() {
         NSApp.activate(ignoringOtherApps: true)
-        hostingController.rootView = HistoryView(historyManager: historyManager)
+        let refreshedController = NSHostingController(
+            rootView: HistoryView(historyManager: historyManager)
+        )
+        hostingController = refreshedController
+        window?.contentViewController = refreshedController
         window?.makeKeyAndOrderFront(nil)
     }
 
