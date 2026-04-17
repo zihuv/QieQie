@@ -16,10 +16,10 @@ struct HistoryView: View {
     @State private var selectedTrendPointDate: Date?
 
     private let summaryColumns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
+        GridItem(.flexible(), spacing: FocusPanelSpacing.lg),
+        GridItem(.flexible(), spacing: FocusPanelSpacing.lg),
+        GridItem(.flexible(), spacing: FocusPanelSpacing.lg),
+        GridItem(.flexible(), spacing: FocusPanelSpacing.lg)
     ]
 
     private let detailCardHeight: CGFloat = 356
@@ -29,17 +29,17 @@ struct HistoryView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xl) {
                 summarySection
 
-                HStack(alignment: .top, spacing: 12) {
+                HStack(alignment: .top, spacing: FocusPanelSpacing.lg) {
                     focusDetailSection
                     recordsSection
                 }
 
                 trendSection
             }
-            .padding(16)
+            .padding(FocusPanelSpacing.xxl)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .frame(
@@ -60,33 +60,17 @@ struct HistoryView: View {
     }
 
     private var summarySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("概览")
-                .font(FocusPanelTypography.sectionTitle)
-
-            LazyVGrid(columns: summaryColumns, spacing: 12) {
-                summaryMetricCard(
-                    title: "今日番茄",
-                    value: "\(detailSnapshot.overview.today.sessionCount)"
-                )
-                summaryMetricCard(
-                    title: "总番茄",
-                    value: "\(detailSnapshot.overview.allTime.sessionCount)"
-                )
-                summaryMetricCard(
-                    title: "今日专注时长",
-                    value: FocusDisplayFormatter.compactDuration(detailSnapshot.overview.today.totalDuration)
-                )
-                summaryMetricCard(
-                    title: "总专注时长",
-                    value: FocusDisplayFormatter.compactDuration(detailSnapshot.overview.allTime.totalDuration)
-                )
+        FocusPanelSection(title: "概览", titleColor: .primary) {
+            LazyVGrid(columns: summaryColumns, spacing: FocusPanelSpacing.lg) {
+                ForEach(summaryMetrics) { metric in
+                    summaryMetricTile(metric)
+                }
             }
         }
     }
 
     private var focusDetailSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
             sectionHeader(
                 title: "专注详情",
                 subtitle: "按分类统计",
@@ -102,7 +86,7 @@ struct HistoryView: View {
 
             Group {
                 if detailSnapshot.tagSummaries.isEmpty {
-                    VStack(spacing: 12) {
+                    VStack(spacing: FocusPanelSpacing.lg) {
                         Circle()
                             .stroke(Color.secondary.opacity(0.12), lineWidth: 18)
                             .frame(width: 178, height: 178)
@@ -118,7 +102,7 @@ struct HistoryView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    HStack(alignment: .center, spacing: 18) {
+                    HStack(alignment: .center, spacing: FocusPanelSpacing.xxl) {
                         Chart {
                             ForEach(Array(chartTagSummaries.enumerated()), id: \.element.id) { index, item in
                                 SectorMark(
@@ -133,9 +117,9 @@ struct HistoryView: View {
                         .chartLegend(.hidden)
                         .frame(width: 224, height: 224)
                         .chartBackground { _ in
-                            VStack(spacing: 2) {
+                            VStack(spacing: FocusPanelSpacing.xxs) {
                                 Text(FocusDisplayFormatter.compactDuration(detailSnapshot.periodTotalDuration))
-                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .font(FocusPanelTypography.chartValue)
                                     .monospacedDigit()
 
                                 Text("\(detailSnapshot.periodSessionCount) 次专注")
@@ -144,7 +128,7 @@ struct HistoryView: View {
                             }
                         }
 
-                        VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
                             ForEach(Array(detailSnapshot.tagSummaries.prefix(6).enumerated()), id: \.element.id) { index, item in
                                 tagSummaryRow(item, color: tagColor(for: index))
                             }
@@ -155,14 +139,14 @@ struct HistoryView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(FocusPanelSpacing.xl)
         .frame(maxWidth: .infinity, minHeight: detailCardHeight, maxHeight: detailCardHeight, alignment: .topLeading)
         .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
     }
 
     private var recordsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xxs) {
                 Text("专注记录")
                     .font(FocusPanelTypography.sectionTitle)
                 Text(FocusDisplayFormatter.periodTitle(for: effectiveDetailQuery))
@@ -178,7 +162,7 @@ struct HistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 ScrollView(showsIndicators: true) {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
                         ForEach(Array(detailDaySections.enumerated()), id: \.element.id) { index, section in
                             dayTimelineSection(section)
 
@@ -187,12 +171,12 @@ struct HistoryView: View {
                             }
                         }
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, FocusPanelSpacing.xxs)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .padding(14)
+        .padding(FocusPanelSpacing.xl)
         .frame(
             minWidth: 304,
             maxWidth: 304,
@@ -204,7 +188,7 @@ struct HistoryView: View {
     }
 
     private var trendSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
             sectionHeader(
                 title: "专注趋势",
                 subtitle: "按时长查看变化",
@@ -330,7 +314,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(FocusPanelSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
     }
@@ -343,8 +327,8 @@ struct HistoryView: View {
         onGranularityChange: @escaping (FocusStatisticsGranularity) -> Void,
         onShift: @escaping (Int) -> Void
     ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .top, spacing: FocusPanelSpacing.lg) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xxs) {
                 Text(title)
                     .font(FocusPanelTypography.sectionTitle)
 
@@ -353,9 +337,9 @@ struct HistoryView: View {
                     .foregroundColor(.secondary)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: FocusPanelSpacing.sm)
 
-            VStack(alignment: .trailing, spacing: 8) {
+            VStack(alignment: .trailing, spacing: FocusPanelSpacing.sm) {
                 Picker("", selection: Binding(
                     get: { query.granularity },
                     set: onGranularityChange
@@ -367,7 +351,7 @@ struct HistoryView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 156)
 
-                HStack(spacing: 4) {
+                HStack(spacing: FocusPanelSpacing.xxs) {
                     Button(action: { onShift(-1) }) {
                         Image(systemName: "chevron.left")
                     }
@@ -388,32 +372,30 @@ struct HistoryView: View {
         }
     }
 
-    private func summaryMetricCard(title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(value)
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
-                .foregroundColor(.accentColor)
+    private func summaryMetricTile(_ metric: StatisticsOverviewMetric) -> some View {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
+            Text(metric.value)
+                .font(FocusPanelTypography.heroMetric)
+                .foregroundColor(.primary)
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.65)
 
-            Text(title)
+            Text(metric.title)
                 .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.secondary)
                 .lineLimit(2)
         }
-        .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
-        .padding(14)
-        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
     }
 
     private func tagSummaryRow(_ item: FocusTagSummary, color: Color) -> some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: FocusPanelSpacing.md) {
             Circle()
                 .fill(color)
                 .frame(width: 9, height: 9)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xxs) {
                 Text(item.tagName)
                     .font(FocusPanelTypography.bodyLabel)
                     .lineLimit(1)
@@ -423,9 +405,9 @@ struct HistoryView: View {
                     .foregroundColor(.secondary)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: FocusPanelSpacing.sm)
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: FocusPanelSpacing.xxs) {
                 Text(FocusDisplayFormatter.compactDuration(item.totalDuration))
                     .font(FocusPanelTypography.bodyLabel)
                     .monospacedDigit()
@@ -439,13 +421,13 @@ struct HistoryView: View {
     }
 
     private func dayTimelineSection(_ section: StatisticsOverviewDaySection) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
             Text(FocusDisplayFormatter.preciseDate(section.date))
                 .font(FocusPanelTypography.dateLabel)
                 .foregroundColor(.secondary)
                 .monospacedDigit()
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xxs) {
                 ForEach(Array(section.sessions.enumerated()), id: \.element.id) { index, session in
                     timelineSessionRow(
                         session,
@@ -457,55 +439,14 @@ struct HistoryView: View {
     }
 
     private func timelineSessionRow(_ session: FocusSession, showsConnector: Bool) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            timelineMarker(showsConnector: showsConnector)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(StatisticsOverviewGrouping.timeRangeText(for: session))
-                    .font(FocusPanelTypography.supportingText)
-                    .foregroundColor(.secondary)
-                    .monospacedDigit()
-
-                HStack(spacing: 6) {
-                    StatisticsTagBadge(title: session.displayTagName)
-
-                    Text(session.displayNote ?? "未填写说明")
-                        .font(FocusPanelTypography.entryTitle)
-                        .lineLimit(1)
-                        .foregroundColor(session.displayNote == nil ? .secondary : .primary)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            Text(FocusDisplayFormatter.compactDuration(session.duration))
-                .font(FocusPanelTypography.bodyLabel)
-                .foregroundColor(.secondary)
-                .monospacedDigit()
-                .padding(.top, 1)
-        }
-        .padding(.vertical, 6)
-    }
-
-    private func timelineMarker(showsConnector: Bool) -> some View {
-        VStack(spacing: 0) {
-            Circle()
-                .fill(Color.accentColor)
-                .frame(width: 8, height: 8)
-                .overlay(
-                    Circle()
-                        .stroke(Color.accentColor.opacity(0.18), lineWidth: 5)
-                )
-
-            if showsConnector {
-                Rectangle()
-                    .fill(Color.accentColor.opacity(0.22))
-                    .frame(width: 1, height: 34)
-                    .padding(.top, 4)
-            }
-        }
-        .frame(width: 12, alignment: .top)
-        .padding(.top, 4)
+        FocusTimelineRow(
+            timeText: StatisticsOverviewGrouping.timeRangeText(for: session),
+            tagTitle: session.displayTagName,
+            title: session.displayNote ?? "未填写说明",
+            usesPlaceholderTitle: session.displayNote == nil,
+            durationText: FocusDisplayFormatter.compactDuration(session.duration),
+            showsConnector: showsConnector
+        )
     }
 
     private func loadData() {
@@ -523,16 +464,22 @@ struct HistoryView: View {
     }
 
     private func tagColor(for index: Int) -> Color {
-        let palette: [Color] = [
-            .accentColor,
-            Color(nsColor: .systemIndigo),
-            Color(nsColor: .systemBlue),
-            Color(nsColor: .systemTeal),
-            Color(nsColor: .systemCyan),
-            Color(nsColor: .systemMint)
-        ]
+        FocusPanelColor.chartColor(for: index)
+    }
 
-        return palette[index % palette.count]
+    private var summaryMetrics: [StatisticsOverviewMetric] {
+        [
+            StatisticsOverviewMetric(title: "今日番茄", value: "\(detailSnapshot.overview.today.sessionCount)"),
+            StatisticsOverviewMetric(title: "总番茄", value: "\(detailSnapshot.overview.allTime.sessionCount)"),
+            StatisticsOverviewMetric(
+                title: "今日专注时长",
+                value: FocusDisplayFormatter.compactDuration(detailSnapshot.overview.today.totalDuration)
+            ),
+            StatisticsOverviewMetric(
+                title: "总专注时长",
+                value: FocusDisplayFormatter.compactDuration(detailSnapshot.overview.allTime.totalDuration)
+            )
+        ]
     }
 
     private var effectiveDetailQuery: FocusStatisticsQuery {
@@ -629,9 +576,9 @@ struct HistoryView: View {
                 .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .focusPanelSurface(cornerRadius: 12)
+        .padding(.horizontal, FocusPanelSpacing.md)
+        .padding(.vertical, FocusPanelSpacing.sm)
+        .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
     }
 
     @ViewBuilder
@@ -658,8 +605,8 @@ struct HistoryView: View {
     private func clampedTrendCalloutX(_ value: CGFloat, containerWidth: CGFloat) -> CGFloat {
         let halfWidth = trendSelectionCalloutWidth / 2
         return min(
-            max(value, halfWidth + 8),
-            max(halfWidth + 8, containerWidth - halfWidth - 8)
+            max(value, halfWidth + FocusPanelSpacing.sm),
+            max(halfWidth + FocusPanelSpacing.sm, containerWidth - halfWidth - FocusPanelSpacing.sm)
         )
     }
 
@@ -732,60 +679,53 @@ struct StatisticsOverviewView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
                 summarySection
                 recordsSection
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(8)
+            .padding(FocusPanelSpacing.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var summarySection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("概览")
-                .font(FocusPanelTypography.sectionTitle)
+        FocusPanelSection(title: "概览") {
+            FocusPanelGroup(horizontalPadding: FocusPanelSpacing.sm, verticalPadding: FocusPanelSpacing.md) {
+                VStack(spacing: 0) {
+                    ForEach(Array(summaryMetrics.enumerated()), id: \.element.id) { index, metric in
+                        summaryMetricRow(metric)
 
-            VStack(spacing: 0) {
-                ForEach(Array(summaryMetrics.enumerated()), id: \.element.id) { index, metric in
-                    summaryMetricRow(metric)
-
-                    if index < summaryMetrics.count - 1 {
-                        Divider()
-                            .padding(.leading, 14)
+                        if index < summaryMetrics.count - 1 {
+                            FocusPanelDivider(leadingInset: FocusPanelSpacing.xl)
+                        }
                     }
                 }
             }
-            .focusPanelSurface()
         }
     }
 
     private var recordsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("专注记录")
-                .font(FocusPanelTypography.sectionTitle)
-
+        FocusPanelSection(title: "专注记录") {
             if daySections.isEmpty {
-                Text("完成一次专注后显示最近记录")
-                    .font(FocusPanelTypography.supportingText)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-                    .padding(8)
-                    .focusPanelSurface()
+                FocusPanelGroup(horizontalPadding: FocusPanelSpacing.sm, verticalPadding: FocusPanelSpacing.sm) {
+                    Text("完成一次专注后显示最近记录")
+                        .font(FocusPanelTypography.supportingText)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+                }
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(daySections.enumerated()), id: \.element.id) { index, section in
-                        daySection(section)
+                FocusPanelGroup(horizontalPadding: FocusPanelSpacing.md, verticalPadding: FocusPanelSpacing.sm) {
+                    VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
+                        ForEach(Array(daySections.enumerated()), id: \.element.id) { index, section in
+                            daySection(section)
 
-                        if index < daySections.count - 1 {
-                            Divider()
+                            if index < daySections.count - 1 {
+                                Divider()
+                            }
                         }
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .focusPanelSurface()
             }
         }
     }
@@ -810,12 +750,15 @@ struct StatisticsOverviewView: View {
     }
 
     private func summaryMetricRow(_ metric: StatisticsOverviewMetric) -> some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: FocusPanelSpacing.lg) {
             Text(metric.title)
                 .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .allowsTightening(true)
 
-            Spacer(minLength: 10)
+            Spacer(minLength: FocusPanelSpacing.sm)
 
             Text(metric.value)
                 .font(FocusPanelTypography.metricValue)
@@ -823,18 +766,18 @@ struct StatisticsOverviewView: View {
                 .minimumScaleFactor(0.65)
                 .monospacedDigit()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, FocusPanelSpacing.sm)
+        .padding(.vertical, FocusPanelSpacing.sm)
     }
 
     private func daySection(_ section: StatisticsOverviewDaySection) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
             Text(FocusDisplayFormatter.preciseDate(section.date))
                 .font(FocusPanelTypography.dateLabel)
                 .foregroundColor(.secondary)
                 .monospacedDigit()
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xxs) {
                 ForEach(Array(section.sessions.enumerated()), id: \.element.id) { index, session in
                     sessionRow(
                         session,
@@ -846,78 +789,18 @@ struct StatisticsOverviewView: View {
     }
 
     private func sessionRow(_ session: FocusSession, showsConnector: Bool) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            timelineMarker(showsConnector: showsConnector)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(StatisticsOverviewGrouping.timeRangeText(for: session))
-                    .font(FocusPanelTypography.supportingText)
-                    .foregroundColor(.secondary)
-                    .monospacedDigit()
-
-                HStack(spacing: 6) {
-                    StatisticsTagBadge(title: session.displayTagName)
-
-                    Text(taskName(for: session))
-                        .font(FocusPanelTypography.entryTitle)
-                        .lineLimit(1)
-                        .foregroundColor(session.displayNote == nil ? .secondary : .primary)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            Text(FocusDisplayFormatter.compactDuration(session.duration))
-                .font(FocusPanelTypography.bodyLabel)
-                .foregroundColor(.secondary)
-                .monospacedDigit()
-                .padding(.top, 1)
-        }
-        .padding(.vertical, 6)
-    }
-
-    private func timelineMarker(showsConnector: Bool) -> some View {
-        VStack(spacing: 0) {
-            Circle()
-                .fill(Color.accentColor)
-                .frame(width: 8, height: 8)
-                .overlay(
-                    Circle()
-                        .stroke(Color.accentColor.opacity(0.18), lineWidth: 5)
-                )
-
-            if showsConnector {
-                Rectangle()
-                    .fill(Color.accentColor.opacity(0.22))
-                    .frame(width: 1, height: 34)
-                    .padding(.top, 4)
-            }
-        }
-        .frame(width: 12, alignment: .top)
-        .padding(.top, 4)
+        FocusTimelineRow(
+            timeText: StatisticsOverviewGrouping.timeRangeText(for: session),
+            tagTitle: session.displayTagName,
+            title: taskName(for: session),
+            usesPlaceholderTitle: session.displayNote == nil,
+            durationText: FocusDisplayFormatter.compactDuration(session.duration),
+            showsConnector: showsConnector
+        )
     }
 
     private func taskName(for session: FocusSession) -> String {
         session.displayNote ?? "未填写说明"
-    }
-}
-
-private struct StatisticsTagBadge: View {
-    let title: String
-
-    var body: some View {
-        Text(title)
-            .font(FocusPanelTypography.supportingText)
-            .foregroundColor(.accentColor)
-            .lineLimit(1)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Color.accentColor.opacity(0.1))
-            .overlay(
-                Capsule(style: .continuous)
-                    .stroke(Color.accentColor.opacity(0.18), lineWidth: 1)
-            )
-            .clipShape(Capsule(style: .continuous))
     }
 }
 

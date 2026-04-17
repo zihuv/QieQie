@@ -178,7 +178,7 @@ struct SettingsPopover: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: FocusPanelSpacing.md) {
             headerRow(title: focusTimerManager.state.currentPhase.title, showsBack: false)
             quickFocusDurationSection
             taskMetadataSection
@@ -194,10 +194,10 @@ struct SettingsPopover: View {
     }
 
     private var settingsContent: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: FocusPanelSpacing.sm) {
             headerRow(title: "设置", showsBack: true)
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
                     settingsSection(title: "计时选项") {
                         VStack(spacing: 0) {
                             settingsInputRow(
@@ -257,10 +257,9 @@ struct SettingsPopover: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(.bottom, 0)
             }
         }
-        .padding(10)
+        .padding(FocusPanelSpacing.md)
         .frame(
             width: SettingsPopoverLayout.settingsSize.width,
             height: SettingsPopoverLayout.settingsSize.height,
@@ -294,13 +293,13 @@ struct SettingsPopover: View {
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsDetailButton)
             }
             .padding(.horizontal, FocusPanelChrome.compactPadding)
-            .padding(.top, 10)
+            .padding(.top, FocusPanelSpacing.md)
 
             StatisticsOverviewView(
                 statistics: dashboardStats,
                 recentSessions: Array(recentSessions.prefix(30))
             )
-            .padding(.top, 2)
+            .padding(.top, FocusPanelSpacing.xxs)
         }
         .frame(
             width: SettingsPopoverLayout.statisticsSize.width,
@@ -342,13 +341,12 @@ struct SettingsPopover: View {
     }
 
     private var statisticsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            statisticsRow(title: "今日", period: dashboardStats.today)
-            statisticsRow(title: "本周", period: dashboardStats.week)
+        FocusPanelGroup {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
+                statisticsRow(title: "今日", period: dashboardStats.today)
+                statisticsRow(title: "本周", period: dashboardStats.week)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
     }
 
     private var quickFocusDurationSection: some View {
@@ -358,8 +356,8 @@ struct SettingsPopover: View {
                 .monospacedDigit()
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .focusPanelSurface()
+                .padding(.vertical, FocusPanelSpacing.sm)
+                .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
         }
         .buttonStyle(.plain)
         .popover(
@@ -373,8 +371,8 @@ struct SettingsPopover: View {
     }
 
     private var quickFocusDurationEditor: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(spacing: FocusPanelSpacing.lg) {
+            HStack(spacing: FocusPanelSpacing.md) {
                 TextField("", text: $quickFocusMinutes)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 108)
@@ -394,7 +392,7 @@ struct SettingsPopover: View {
                     .foregroundColor(.secondary)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: FocusPanelSpacing.sm) {
                 Button("取消", role: .cancel, action: dismissQuickFocusDurationEditor)
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
@@ -407,7 +405,7 @@ struct SettingsPopover: View {
                     .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationConfirmButton)
             }
         }
-        .padding(14)
+        .padding(FocusPanelSpacing.xl)
         .frame(width: 196)
         .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationEditor)
         .onAppear {
@@ -419,21 +417,21 @@ struct SettingsPopover: View {
     }
 
     private var taskMetadataSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.xs) {
             Text("分类与说明")
                 .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
 
-            HStack(spacing: 8) {
+            HStack(spacing: FocusPanelSpacing.sm) {
                 categoryPickerField
 
                 TextField("补充说明", text: taskNameBinding)
                     .textFieldStyle(.plain)
                     .lineLimit(1)
                     .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 9)
-                    .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
+                    .padding(.horizontal, FocusPanelSpacing.md)
+                    .frame(height: FocusPanelControl.fieldHeight)
+                    .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
             }
         }
         .popover(
@@ -446,7 +444,7 @@ struct SettingsPopover: View {
     }
 
     private var tagEditor: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.lg) {
             Text(tagEditorMode.title)
                 .font(FocusPanelTypography.sectionTitle)
 
@@ -462,7 +460,7 @@ struct SettingsPopover: View {
                 }
                 .onSubmit(submitTagEditor)
 
-            HStack(spacing: 8) {
+            HStack(spacing: FocusPanelSpacing.sm) {
                 Button("取消", role: .cancel, action: dismissTagEditor)
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
@@ -473,7 +471,7 @@ struct SettingsPopover: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(14)
+        .padding(FocusPanelSpacing.xl)
         .frame(width: 208)
         .onAppear {
             if tagEditorMode == .create {
@@ -495,7 +493,7 @@ struct SettingsPopover: View {
 
     private var categoryPickerField: some View {
         Button(action: toggleCategoryPicker) {
-            HStack(spacing: 8) {
+            HStack(spacing: FocusPanelSpacing.sm) {
                 Text(selectedTagTitle)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -506,12 +504,12 @@ struct SettingsPopover: View {
             }
             .font(FocusPanelTypography.bodyLabel)
             .foregroundColor(.primary)
-            .padding(.horizontal, 10)
-            .frame(width: 104, height: 34, alignment: .leading)
+            .padding(.horizontal, FocusPanelSpacing.md)
+            .frame(width: FocusPanelControl.pickerWidth, height: FocusPanelControl.fieldHeight, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusPanelSurface(cornerRadius: FocusPanelChrome.sectionCornerRadius)
+        .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
         .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.categoryPicker)
         .popover(
             isPresented: $isCategoryPickerPresented,
@@ -531,9 +529,9 @@ struct SettingsPopover: View {
     }
 
     private var controlSection: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: FocusPanelSpacing.xs) {
             Button(action: mainButtonAction) {
-                HStack(spacing: 6) {
+                HStack(spacing: FocusPanelSpacing.xs) {
                     Image(systemName: mainButtonIcon)
                     Text(mainButtonTitle)
                 }
@@ -543,9 +541,9 @@ struct SettingsPopover: View {
             .controlSize(.regular)
             .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.mainButton)
 
-            HStack(spacing: 6) {
+            HStack(spacing: FocusPanelSpacing.xs) {
                 Button(action: focusTimerManager.skipCurrentPhase) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: FocusPanelSpacing.xxs) {
                         Image(systemName: "forward.fill")
                         Text("跳过")
                     }
@@ -596,11 +594,11 @@ struct SettingsPopover: View {
     }
 
     private func statisticsRow(title: String, period: FocusStatisticsPeriod) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: FocusPanelSpacing.lg) {
             Text("\(title):")
                 .font(FocusPanelTypography.supportingText)
                 .foregroundColor(.secondary)
-            Spacer(minLength: 12)
+            Spacer(minLength: FocusPanelSpacing.lg)
             Text(FocusDisplayFormatter.summaryDuration(period.totalDuration))
                 .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.secondary)
@@ -612,30 +610,17 @@ struct SettingsPopover: View {
 
     private func settingsSection<Content: View>(
         title: String,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(FocusPanelTypography.sectionTitle)
-                .foregroundColor(.secondary)
-
-            settingsCard {
+        FocusPanelSection(title: title) {
+            FocusPanelGroup {
                 content()
             }
         }
     }
 
-    private func settingsCard<Content: View>(
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        content()
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .focusPanelSurface()
-    }
-
     private var settingsDivider: some View {
-        Divider()
-            .padding(.leading, 8)
+        FocusPanelDivider()
     }
 
     private func settingsInputRow(
@@ -647,21 +632,12 @@ struct SettingsPopover: View {
         upperBound: Int? = nil,
         onCommit: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(FocusPanelTypography.bodyLabel)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .allowsTightening(true)
-                .frame(width: 82, alignment: .leading)
-
-            Spacer(minLength: 4)
-
-            HStack(spacing: 6) {
+        FocusPanelFormRow(title: title, labelWidth: 82) {
+            HStack(spacing: FocusPanelSpacing.xs) {
                 TextField("", text: value)
                     .textFieldStyle(.roundedBorder)
                     .controlSize(.mini)
-                    .frame(width: 64)
+                    .frame(width: FocusPanelControl.numericFieldWidth)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(accessibilityID)
                     .onChange(of: value.wrappedValue) { _, newValue in
@@ -677,12 +653,9 @@ struct SettingsPopover: View {
                     .font(FocusPanelTypography.supportingText)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
-                    .frame(width: 24, alignment: .leading)
+                    .frame(width: FocusPanelControl.unitLabelWidth, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
     }
 
     private func settingsToggleRow(
@@ -690,25 +663,13 @@ struct SettingsPopover: View {
         isOn: Binding<Bool>,
         accessibilityID: String
     ) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .font(FocusPanelTypography.bodyLabel)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-                .allowsTightening(true)
-                .frame(width: 112, alignment: .leading)
-
-            Spacer(minLength: 4)
-
+        FocusPanelFormRow(title: title, labelWidth: 112) {
             Toggle("", isOn: isOn)
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .accessibilityIdentifier(accessibilityID)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
     }
 
     private func syncConfigurationFields() {
@@ -964,7 +925,7 @@ private struct CategoryPickerPopoverContent: View {
     let onDeleteTag: (String) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.xs) {
             Button(action: { onSelectTag(nil) }) {
                 pickerRowLabel(title: untaggedTitle, isSelected: selectedTagName == nil)
             }
@@ -972,10 +933,10 @@ private struct CategoryPickerPopoverContent: View {
 
             if !availableTags.isEmpty {
                 Divider()
-                    .padding(.vertical, 2)
+                    .padding(.vertical, FocusPanelSpacing.xxs)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 4) {
+                    VStack(spacing: FocusPanelSpacing.xxs) {
                         ForEach(availableTags, id: \.self) { tag in
                             CategoryPickerTagRowView(
                                 title: tag,
@@ -985,7 +946,7 @@ private struct CategoryPickerPopoverContent: View {
                                 onRename: { onRenameTag(tag) },
                                 onDelete: { onDeleteTag(tag) }
                             )
-                            .frame(height: 30)
+                            .frame(height: FocusPanelControl.compactRowHeight)
                         }
                     }
                 }
@@ -993,10 +954,10 @@ private struct CategoryPickerPopoverContent: View {
             }
 
             Divider()
-                .padding(.top, 2)
+                .padding(.top, FocusPanelSpacing.xxs)
 
             Button(action: onCreateTag) {
-                HStack(spacing: 8) {
+                FocusSelectableRow {
                     Image(systemName: "plus")
                         .font(.system(size: 11, weight: .semibold))
                     Text("新建分类")
@@ -1004,38 +965,28 @@ private struct CategoryPickerPopoverContent: View {
                 }
                 .font(FocusPanelTypography.bodyLabel)
                 .foregroundColor(.primary)
-                .padding(.horizontal, 10)
-                .frame(height: 30)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.primary.opacity(0.04))
-                )
             }
             .buttonStyle(.plain)
         }
-        .padding(10)
-        .frame(width: 188)
+        .padding(FocusPanelSpacing.md)
+        .frame(width: FocusPanelControl.pickerPopoverWidth)
     }
 
     private func pickerRowLabel(title: String, isSelected: Bool) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.accentColor)
+        FocusSelectableRow(isSelected: isSelected) {
+            HStack(spacing: FocusPanelSpacing.sm) {
+                Text(title)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.accentColor)
+                }
             }
         }
         .font(FocusPanelTypography.bodyLabel)
         .foregroundColor(.primary)
-        .padding(.horizontal, 10)
-        .frame(height: 30)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
-        )
     }
 }
 
@@ -1173,7 +1124,7 @@ final class CategoryPickerTagRowControl: NSControl {
 
     private func setupView() {
         wantsLayer = true
-        layer?.cornerRadius = 8
+        layer?.cornerRadius = FocusPanelCornerRadius.small
         layer?.masksToBounds = true
 
         titleField.translatesAutoresizingMaskIntoConstraints = false
@@ -1211,7 +1162,7 @@ final class CategoryPickerTagRowControl: NSControl {
 
     private func updateSelectionState() {
         layer?.backgroundColor = (
-            isSelected ? NSColor.controlAccentColor.withAlphaComponent(0.12) : NSColor.labelColor.withAlphaComponent(0.04)
+            isSelected ? FocusPanelNSColor.selectionFill : FocusPanelNSColor.rowFill
         ).cgColor
         checkmarkImageView.isHidden = !isSelected
     }
