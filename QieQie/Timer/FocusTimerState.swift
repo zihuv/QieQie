@@ -50,8 +50,8 @@ struct FocusTimerConfiguration: Equatable {
     var shortBreakDuration: TimeInterval = 5 * 60
     var longBreakDuration: TimeInterval = 15 * 60
     var longBreakInterval: Int = 4
-    var autoStartBreak: Bool = true
-    var autoStartNextFocus: Bool = true
+    var autoStartBreak: Bool = false
+    var autoStartNextFocus: Bool = false
 
     static let `default` = FocusTimerConfiguration()
 
@@ -60,8 +60,8 @@ struct FocusTimerConfiguration: Equatable {
         shortBreakDuration: TimeInterval = 5 * 60,
         longBreakDuration: TimeInterval = 15 * 60,
         longBreakInterval: Int = 4,
-        autoStartBreak: Bool = true,
-        autoStartNextFocus: Bool = true
+        autoStartBreak: Bool = false,
+        autoStartNextFocus: Bool = false
     ) {
         self.focusDuration = focusDuration
         self.shortBreakDuration = shortBreakDuration

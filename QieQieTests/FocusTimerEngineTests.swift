@@ -3,6 +3,10 @@ import XCTest
 
 final class FocusTimerEngineTests: XCTestCase {
     private let engine = FocusTimerEngine()
+    private let autoStartConfiguration = FocusTimerConfiguration(
+        autoStartBreak: true,
+        autoStartNextFocus: true
+    )
 
     func testStartCreatesRunningStateForCurrentPhase() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
@@ -52,7 +56,7 @@ final class FocusTimerEngineTests: XCTestCase {
     func testAdvanceFromFocusMovesToShortBreakAndRecordsFocusDuration() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let runningFocus = FocusTimerState(
-            configuration: .default,
+            configuration: autoStartConfiguration,
             currentPhase: .focus,
             cycleFocusCount: 1,
             phaseDuration: 1500,
@@ -93,7 +97,7 @@ final class FocusTimerEngineTests: XCTestCase {
     func testAdvanceFromSkippedFocusMovesToShortBreakWithoutRecordingAndIncrementsCount() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let runningFocus = FocusTimerState(
-            configuration: .default,
+            configuration: autoStartConfiguration,
             currentPhase: .focus,
             cycleFocusCount: 2,
             phaseDuration: 1500,
@@ -136,7 +140,7 @@ final class FocusTimerEngineTests: XCTestCase {
     func testAdvanceFromSkippedFocusEntersLongBreakAtCycleBoundary() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let runningFocus = FocusTimerState(
-            configuration: .default,
+            configuration: autoStartConfiguration,
             currentPhase: .focus,
             cycleFocusCount: 3,
             phaseDuration: 1500,
@@ -157,7 +161,7 @@ final class FocusTimerEngineTests: XCTestCase {
     func testAdvanceToLongBreakAndResetAfterLongBreak() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let almostFinishedCycle = FocusTimerState(
-            configuration: .default,
+            configuration: autoStartConfiguration,
             currentPhase: .focus,
             cycleFocusCount: 3,
             phaseDuration: 1500,

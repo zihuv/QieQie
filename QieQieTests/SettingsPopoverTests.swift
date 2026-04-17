@@ -170,6 +170,30 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
+    func testFreshSettingsPanelDefaultsAutoOptionsToOff() throws {
+        let defaults = UserDefaults(suiteName: UUID().uuidString)!
+        let manager = FocusTimerManager(userDefaults: defaults)
+        let host = NSHostingController(
+            rootView: SettingsPopover(
+                focusTimerManager: manager,
+                initialPanel: .settings
+            )
+        )
+        let window = makeWindow(size: SettingsPopoverLayout.settingsSize)
+
+        window.contentViewController = host
+        window.makeKeyAndOrderFront(nil)
+        _ = host.view
+        host.view.layoutSubtreeIfNeeded()
+        pumpMainRunLoop()
+
+        let switches = findSwitches(in: host.view)
+        XCTAssertEqual(switches.count, 2)
+        XCTAssertTrue(switches.allSatisfy { $0.state == .off })
+
+        window.orderOut(nil)
+    }
+
     func testMainPanelUsesStartBreakLabelWhenBreakIsWaitingToBeStarted() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
         let manager = FocusTimerManager(userDefaults: defaults)

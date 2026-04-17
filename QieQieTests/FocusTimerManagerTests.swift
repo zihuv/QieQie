@@ -4,6 +4,43 @@ import SwiftData
 
 @MainActor
 final class FocusTimerManagerTests: XCTestCase {
+    func testFreshManagerDefaultsAutoStartOptionsToDisabled() {
+        let manager = FocusTimerManager(userDefaults: makeUserDefaults())
+
+        XCTAssertFalse(manager.configuration.autoStartBreak)
+        XCTAssertFalse(manager.configuration.autoStartNextFocus)
+    }
+
+    func testConfigurationPersistsAcrossManagerInstances() {
+        let defaults = makeUserDefaults()
+        let firstManager = FocusTimerManager(userDefaults: defaults)
+
+        firstManager.updateConfiguration(
+            FocusTimerConfiguration(
+                focusDuration: 30 * 60,
+                shortBreakDuration: 8 * 60,
+                longBreakDuration: 18 * 60,
+                longBreakInterval: 3,
+                autoStartBreak: true,
+                autoStartNextFocus: false
+            )
+        )
+
+        let secondManager = FocusTimerManager(userDefaults: defaults)
+
+        XCTAssertEqual(
+            secondManager.configuration,
+            FocusTimerConfiguration(
+                focusDuration: 30 * 60,
+                shortBreakDuration: 8 * 60,
+                longBreakDuration: 18 * 60,
+                longBreakInterval: 3,
+                autoStartBreak: true,
+                autoStartNextFocus: false
+            )
+        )
+    }
+
     func testCurrentTaskNamePersistsAcrossManagerInstances() {
         let defaults = makeUserDefaults()
         let firstManager = FocusTimerManager(userDefaults: defaults)
@@ -84,6 +121,9 @@ final class FocusTimerManagerTests: XCTestCase {
             focusCompletionRecorder: { duration, _ in
                 recordedDurations.append(duration)
             }
+        )
+        manager.updateConfiguration(
+            FocusTimerConfiguration(autoStartBreak: true, autoStartNextFocus: false)
         )
 
         manager.startCurrentPhase()
@@ -221,9 +261,12 @@ final class FocusTimerManagerTests: XCTestCase {
             tickerScheduler: scheduler,
             userDefaults: makeUserDefaults()
         )
+        manager.updateConfiguration(
+            FocusTimerConfiguration(autoStartBreak: true, autoStartNextFocus: false)
+        )
 
         manager.state = FocusTimerState(
-            configuration: .default,
+            configuration: FocusTimerConfiguration(autoStartBreak: true, autoStartNextFocus: false),
             currentPhase: .focus,
             cycleFocusCount: 3,
             phaseDuration: 25 * 60,

@@ -61,8 +61,8 @@ struct SettingsPopover: View {
     @State private var shortBreakMinutes = "5"
     @State private var longBreakMinutes = "15"
     @State private var longBreakInterval = "4"
-    @State private var autoStartBreak = true
-    @State private var autoStartNextFocus = true
+    @State private var autoStartBreak = false
+    @State private var autoStartNextFocus = false
     @State private var dashboardStats = FocusStatistics()
     @State private var recentSessions: [FocusSession] = []
     @FocusState private var isQuickFocusDurationFieldFocused: Bool
