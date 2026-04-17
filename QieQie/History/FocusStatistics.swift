@@ -25,6 +25,7 @@ struct FocusDailyTrendPoint: Identifiable {
 }
 
 enum FocusStatisticsGranularity: String, CaseIterable, Identifiable {
+    case day
     case week
     case month
     case year
@@ -33,6 +34,8 @@ enum FocusStatisticsGranularity: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .day:
+            return "日"
         case .week:
             return "周"
         case .month:
@@ -50,6 +53,8 @@ struct FocusStatisticsQuery: Equatable {
     func normalized(calendar: Calendar = FocusCalendar.analytics) -> FocusStatisticsQuery {
         let normalizedDate: Date
         switch granularity {
+        case .day:
+            normalizedDate = calendar.startOfDay(for: anchorDate)
         case .week:
             normalizedDate = FocusHistoryAnalytics.startOfWeek(for: anchorDate, calendar: calendar)
         case .month:
@@ -64,6 +69,8 @@ struct FocusStatisticsQuery: Equatable {
     func shifted(by value: Int, calendar: Calendar = FocusCalendar.analytics) -> FocusStatisticsQuery {
         let component: Calendar.Component
         switch granularity {
+        case .day:
+            component = .day
         case .week:
             component = .weekOfYear
         case .month:
@@ -85,6 +92,8 @@ struct FocusStatisticsQuery: Equatable {
         let end: Date
 
         switch granularity {
+        case .day:
+            end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
         case .week:
             end = calendar.date(byAdding: .day, value: 7, to: start) ?? start
         case .month:
@@ -322,6 +331,8 @@ enum FocusDisplayFormatter {
         calendar: Calendar = FocusCalendar.analytics
     ) -> String {
         switch granularity {
+        case .day:
+            return hourMinute(date, calendar: calendar)
         case .week:
             return weekdaySymbol(for: date, calendar: calendar)
         case .month:
@@ -338,6 +349,11 @@ enum FocusDisplayFormatter {
         let normalized = query.normalized(calendar: calendar)
 
         switch normalized.granularity {
+        case .day:
+            let year = calendar.component(.year, from: normalized.anchorDate)
+            let month = calendar.component(.month, from: normalized.anchorDate)
+            let day = calendar.component(.day, from: normalized.anchorDate)
+            return "\(year)年\(month)月\(day)日"
         case .week:
             let weekOfYear = calendar.component(.weekOfYear, from: normalized.anchorDate)
             let yearForWeek = calendar.component(.yearForWeekOfYear, from: normalized.anchorDate)
@@ -362,6 +378,10 @@ enum FocusDisplayFormatter {
         calendar: Calendar = FocusCalendar.analytics
     ) -> String {
         switch granularity {
+        case .day:
+            let month = calendar.component(.month, from: date)
+            let day = calendar.component(.day, from: date)
+            return "\(month)月\(day)日 \(hourMinute(date, calendar: calendar))"
         case .week, .month:
             let month = calendar.component(.month, from: date)
             let day = calendar.component(.day, from: date)
@@ -397,5 +417,11 @@ enum FocusDisplayFormatter {
 
     static func percentage(_ value: Double) -> String {
         String(format: "%.0f%%", value * 100)
+    }
+
+    private static func hourMinute(_ date: Date, calendar: Calendar) -> String {
+        let hour = calendar.component(.hour, from: date)
+        let minute = calendar.component(.minute, from: date)
+        return String(format: "%02d:%02d", hour, minute)
     }
 }

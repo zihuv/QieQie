@@ -183,6 +183,8 @@ enum FocusHistoryAnalytics {
         calendar: Calendar
     ) -> Date {
         switch granularity {
+        case .day:
+            return startOfHour(for: date, calendar: calendar)
         case .week, .month:
             return calendar.startOfDay(for: date)
         case .year:
@@ -196,6 +198,10 @@ enum FocusHistoryAnalytics {
     ) -> [Date] {
         let normalizedQuery = query.normalized(calendar: calendar)
         switch normalizedQuery.granularity {
+        case .day:
+            return (0..<24).compactMap { offset in
+                calendar.date(byAdding: .hour, value: offset, to: normalizedQuery.anchorDate)
+            }
         case .week:
             let weekDates = (0..<7).compactMap { offset in
                 calendar.date(byAdding: .day, value: offset, to: normalizedQuery.anchorDate)
@@ -221,5 +227,10 @@ enum FocusHistoryAnalytics {
                 calendar.date(byAdding: .month, value: offset, to: normalizedQuery.anchorDate)
             }
         }
+    }
+
+    private static func startOfHour(for date: Date, calendar: Calendar) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month, .day, .hour], from: date))
+            ?? calendar.startOfDay(for: date)
     }
 }

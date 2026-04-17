@@ -16,6 +16,10 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
         let april = makeDate(year: 2026, month: 4, day: 1, hour: 12, minute: 0, calendar: calendar)
 
         XCTAssertEqual(
+            FocusDisplayFormatter.chartLabel(for: monday, granularity: .day, calendar: calendar),
+            "12:00"
+        )
+        XCTAssertEqual(
             FocusDisplayFormatter.chartLabel(for: monday, granularity: .week, calendar: calendar),
             "一"
         )
@@ -49,6 +53,37 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
         let date = makeDate(year: 2026, month: 5, day: 3, hour: 12, minute: 12, calendar: calendar)
 
         XCTAssertEqual(FocusDisplayFormatter.preciseDateTime(date), "2026-05-03 12:12")
+    }
+
+    func testDayQueryNormalizesIntervalAndPeriodTitle() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let anchor = makeDate(year: 2026, month: 5, day: 3, hour: 12, minute: 12, calendar: calendar)
+        let normalized = FocusStatisticsQuery(granularity: .day, anchorDate: anchor)
+            .normalized(calendar: calendar)
+        let interval = normalized.interval(calendar: calendar)
+
+        let normalizedComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: normalized.anchorDate)
+        let startComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: interval.start)
+        let endComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: interval.end)
+
+        XCTAssertEqual(normalizedComponents.year, 2026)
+        XCTAssertEqual(normalizedComponents.month, 5)
+        XCTAssertEqual(normalizedComponents.day, 3)
+        XCTAssertEqual(normalizedComponents.hour, 0)
+        XCTAssertEqual(normalizedComponents.minute, 0)
+        XCTAssertEqual(startComponents.year, 2026)
+        XCTAssertEqual(startComponents.month, 5)
+        XCTAssertEqual(startComponents.day, 3)
+        XCTAssertEqual(startComponents.hour, 0)
+        XCTAssertEqual(startComponents.minute, 0)
+        XCTAssertEqual(endComponents.year, 2026)
+        XCTAssertEqual(endComponents.month, 5)
+        XCTAssertEqual(endComponents.day, 4)
+        XCTAssertEqual(endComponents.hour, 0)
+        XCTAssertEqual(endComponents.minute, 0)
+        XCTAssertEqual(FocusDisplayFormatter.periodTitle(for: normalized, calendar: calendar), "2026年5月3日")
     }
 
     func testStatisticsOverviewGroupingSortsDaysDescendingAndSessionsDescending() {
@@ -259,6 +294,60 @@ final class FocusHistoryAnalyticsTests: XCTestCase {
         XCTAssertEqual(snapshot.trendPoints.map(\.sessionCount), [0, 1, 0, 1, 0, 0, 1])
         XCTAssertEqual(snapshot.trendPoints.map(\.totalDuration), [0, 1500, 0, 2400, 0, 0, 1800])
         XCTAssertEqual(snapshot.recentSessions.map(\.taskName), ["专注", "读论文", "接口联调"])
+    }
+
+    func testPageSnapshotSupportsDayGranularity() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let dayAnchor = makeDate(year: 2026, month: 5, day: 3, hour: 12, minute: 0, calendar: calendar)
+        let sessions = [
+            makeSession(
+                taskName: "深夜收尾",
+                tagName: "开发",
+                note: "深夜收尾",
+                startTime: makeDate(year: 2026, month: 5, day: 2, hour: 23, minute: 40, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 3, hour: 0, minute: 5, calendar: calendar),
+                duration: 1500,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "上午阅读",
+                tagName: "学习",
+                note: "上午阅读",
+                startTime: makeDate(year: 2026, month: 5, day: 3, hour: 9, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 3, hour: 9, minute: 40, calendar: calendar),
+                duration: 2400,
+                isCompleted: true
+            ),
+            makeSession(
+                taskName: "次日任务",
+                tagName: "开发",
+                note: "次日任务",
+                startTime: makeDate(year: 2026, month: 5, day: 4, hour: 9, minute: 0, calendar: calendar),
+                endTime: makeDate(year: 2026, month: 5, day: 4, hour: 9, minute: 25, calendar: calendar),
+                duration: 1500,
+                isCompleted: true
+            )
+        ]
+
+        let snapshot = FocusHistoryAnalytics.pageSnapshot(
+            from: sessions,
+            query: FocusStatisticsQuery(granularity: .day, anchorDate: dayAnchor),
+            now: dayAnchor,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(snapshot.tagSummaries.map(\.tagName), ["学习", "开发"])
+        XCTAssertEqual(snapshot.tagSummaries.map(\.sessionCount), [1, 1])
+        XCTAssertEqual(snapshot.periodSessionCount, 2)
+        XCTAssertEqual(snapshot.periodTotalDuration, 3900)
+        XCTAssertEqual(snapshot.recentSessions.map(\.taskName), ["上午阅读", "深夜收尾"])
+        XCTAssertEqual(snapshot.trendPoints.count, 24)
+        XCTAssertEqual(snapshot.trendPoints.map(\.sessionCount).reduce(0, +), 2)
+        XCTAssertEqual(snapshot.trendPoints[0].label, "00:00")
+        XCTAssertEqual(snapshot.trendPoints[9].sessionCount, 1)
+        XCTAssertEqual(snapshot.trendPoints[9].totalDuration, 2400)
     }
 
     private func makeSession(

@@ -26,6 +26,8 @@ struct HistoryView: View {
     private let trendSelectionCalloutWidth: CGFloat = 132
     private let trendPlotHeight: CGFloat = 228
     private let trendSelectionCalloutY: CGFloat = 28
+    private let detailGranularityOptions: [FocusStatisticsGranularity] = [.day, .week, .month, .year]
+    private let trendGranularityOptions: [FocusStatisticsGranularity] = [.week, .month, .year]
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -75,6 +77,7 @@ struct HistoryView: View {
                 title: "专注详情",
                 subtitle: "按分类统计",
                 query: detailQuery,
+                granularityOptions: detailGranularityOptions,
                 canNavigateForward: !effectiveDetailQuery.isCurrentPeriod(),
                 onGranularityChange: { granularity in
                     detailQuery = FocusStatisticsQuery(granularity: granularity, anchorDate: detailQuery.anchorDate)
@@ -193,6 +196,7 @@ struct HistoryView: View {
                 title: "专注趋势",
                 subtitle: "按时长查看变化",
                 query: trendQuery,
+                granularityOptions: trendGranularityOptions,
                 canNavigateForward: !effectiveTrendQuery.isCurrentPeriod(),
                 onGranularityChange: { granularity in
                     trendQuery = FocusStatisticsQuery(granularity: granularity, anchorDate: trendQuery.anchorDate)
@@ -323,6 +327,7 @@ struct HistoryView: View {
         title: String,
         subtitle: String,
         query: FocusStatisticsQuery,
+        granularityOptions: [FocusStatisticsGranularity],
         canNavigateForward: Bool,
         onGranularityChange: @escaping (FocusStatisticsGranularity) -> Void,
         onShift: @escaping (Int) -> Void
@@ -344,12 +349,12 @@ struct HistoryView: View {
                     get: { query.granularity },
                     set: onGranularityChange
                 )) {
-                    ForEach(FocusStatisticsGranularity.allCases) { granularity in
+                    ForEach(granularityOptions) { granularity in
                         Text(granularity.title).tag(granularity)
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 156)
+                .frame(width: segmentedControlWidth(for: granularityOptions))
 
                 HStack(spacing: FocusPanelSpacing.xxs) {
                     Button(action: { onShift(-1) }) {
@@ -501,6 +506,12 @@ struct HistoryView: View {
 
     private var trendAxisValues: [String] {
         switch effectiveTrendQuery.granularity {
+        case .day:
+            let evenHours = displayTrendPoints.filter {
+                FocusCalendar.analytics.component(.hour, from: $0.point.date).isMultiple(of: 4)
+            }
+            let axisValues = evenHours.map(\.categoryID)
+            return axisValues.isEmpty ? displayTrendPoints.map(\.categoryID) : axisValues
         case .week, .year:
             return displayTrendPoints.map(\.categoryID)
         case .month:
@@ -658,11 +669,17 @@ struct HistoryView: View {
 
     private func trendCategoryID(for point: FocusTrendPoint) -> String {
         switch effectiveTrendQuery.granularity {
+        case .day:
+            return FocusDisplayFormatter.preciseDateTime(point.date)
         case .week, .month:
             return FocusDisplayFormatter.preciseDate(point.date)
         case .year:
             return "\(FocusDisplayFormatter.preciseDate(point.date))-\(FocusDisplayFormatter.chartLabel(for: point.date, granularity: .year))"
         }
+    }
+
+    private func segmentedControlWidth(for options: [FocusStatisticsGranularity]) -> CGFloat {
+        CGFloat(max(156, options.count * 44))
     }
 }
 
