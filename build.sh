@@ -12,6 +12,7 @@ STOP_TIMEOUT_SECONDS="${STOP_TIMEOUT_SECONDS:-10}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
+REFRESH_SOURCEKIT_SCRIPT="$REPO_ROOT/scripts/refresh_sourcekit_index.sh"
 
 cd "$REPO_ROOT"
 
@@ -50,6 +51,15 @@ build_app() {
     build
 }
 
+refresh_sourcekit_index() {
+  if [[ ! -x "$REFRESH_SOURCEKIT_SCRIPT" ]]; then
+    fail "SourceKit refresh script not found at ${REFRESH_SOURCEKIT_SCRIPT}."
+  fi
+
+  echo "Refreshing SourceKit index data..."
+  "$REFRESH_SOURCEKIT_SCRIPT"
+}
+
 open_app() {
   [[ -d "$APP_BUNDLE_PATH" ]] || fail "App bundle not found at ${APP_BUNDLE_PATH}."
 
@@ -60,6 +70,7 @@ open_app() {
 main() {
   stop_running_app
   build_app
+  refresh_sourcekit_index
   open_app
 }
 

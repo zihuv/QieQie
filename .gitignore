@@ -37,6 +37,10 @@ artifacts/
 *.dSYM.zip
 *.xcarchive
 
+# SourceKit / BSP
+buildServer.json
+.compile
+
 # Package managers
 .swiftpm/
 Pods/
