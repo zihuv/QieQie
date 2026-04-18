@@ -8,7 +8,7 @@ enum StatisticsWindowLayout {
 struct HistoryView: View {
     let historyManager: FocusHistoryManager
 
-    @State private var detailQuery = FocusStatisticsQuery(granularity: .week, anchorDate: Date())
+    @State private var detailQuery = FocusStatisticsQuery(granularity: .day, anchorDate: Date())
     @State private var trendQuery = FocusStatisticsQuery(granularity: .week, anchorDate: Date())
     @State private var detailSnapshot = FocusStatisticsPageSnapshot()
     @State private var trendSnapshot = FocusStatisticsPageSnapshot()
