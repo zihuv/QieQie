@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-INFO_PLIST="QieQie/Info.plist"
+INFO_PLIST="QieQie/Support/Info.plist"
 PROJECT_FILE="QieQie.xcodeproj/project.pbxproj"
 VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
 VERSION_FILES=("$INFO_PLIST" "$PROJECT_FILE")
@@ -15,6 +15,14 @@ cd "$REPO_ROOT"
 fail() {
   echo "$1" >&2
   exit 1
+}
+
+ensure_required_files_exist() {
+  local file
+
+  for file in "$INFO_PLIST" "$PROJECT_FILE"; do
+    [[ -f "$file" ]] || fail "Required file is missing: $file"
+  done
 }
 
 show_help() {
@@ -122,6 +130,7 @@ main() {
   done
 
   ensure_valid_version "$version"
+  ensure_required_files_exist
 
   if [[ "$(current_version)" == "$version" ]]; then
     fail "Version is already ${version}. Nothing to release."

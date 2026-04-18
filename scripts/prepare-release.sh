@@ -3,7 +3,7 @@
 set -euo pipefail
 
 APP_NAME="QieQie"
-INFO_PLIST="QieQie/Info.plist"
+INFO_PLIST="QieQie/Support/Info.plist"
 PROJECT_FILE="QieQie.xcodeproj/project.pbxproj"
 RELEASE_TEMPLATE=".github/release_template.md"
 VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
@@ -16,6 +16,14 @@ cd "$REPO_ROOT"
 fail() {
   echo "$1" >&2
   exit 1
+}
+
+ensure_required_files_exist() {
+  local file
+
+  for file in "$INFO_PLIST" "$PROJECT_FILE"; do
+    [[ -f "$file" ]] || fail "Required file is missing: $file"
+  done
 }
 
 validate_version() {
@@ -102,6 +110,7 @@ main() {
 
   version="$raw_input"
   validate_version "$version"
+  ensure_required_files_exist
   tag="${version}"
   release_name="${version}"
 
