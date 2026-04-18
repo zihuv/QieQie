@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 enum SettingsPopoverInitialPanel {
@@ -8,7 +7,7 @@ enum SettingsPopoverInitialPanel {
 }
 
 enum SettingsPopoverLayout {
-    static let mainSize = CGSize(width: 252, height: 275)
+    static let mainSize = CGSize(width: 252, height: 284)
     static let settingsSize = CGSize(width: 248, height: 320)
     static let statisticsSize = CGSize(width: 252, height: 320)
 }
@@ -47,43 +46,43 @@ enum FocusTimerAccessibilityID {
     }
 }
 
+enum SettingsPopoverTagEditorMode: Equatable {
+    case create
+    case rename(originalName: String)
+
+    var title: String {
+        switch self {
+        case .create:
+            return "新建分类"
+        case .rename:
+            return "重命名分类"
+        }
+    }
+
+    var confirmTitle: String {
+        switch self {
+        case .create:
+            return "添加"
+        case .rename:
+            return "保存"
+        }
+    }
+
+    var placeholder: String {
+        switch self {
+        case .create:
+            return "输入分类名"
+        case .rename:
+            return "输入新分类名"
+        }
+    }
+}
+
 struct SettingsPopover: View {
     private enum Panel {
         case main
         case settings
         case statistics
-    }
-
-    private enum TagEditorMode: Equatable {
-        case create
-        case rename(originalName: String)
-
-        var title: String {
-            switch self {
-            case .create:
-                return "新建分类"
-            case .rename:
-                return "重命名分类"
-            }
-        }
-
-        var confirmTitle: String {
-            switch self {
-            case .create:
-                return "添加"
-            case .rename:
-                return "保存"
-            }
-        }
-
-        var placeholder: String {
-            switch self {
-            case .create:
-                return "输入分类名"
-            case .rename:
-                return "输入新分类名"
-            }
-        }
     }
 
     @ObservedObject var focusTimerManager: FocusTimerManager
@@ -92,7 +91,7 @@ struct SettingsPopover: View {
     @State private var isCategoryPickerPresented = false
     @State private var isQuickFocusDurationEditorPresented = false
     @State private var isTagEditorPresented = false
-    @State private var tagEditorMode: TagEditorMode = .create
+    @State private var tagEditorMode: SettingsPopoverTagEditorMode = .create
     @State private var quickFocusMinutes = "25"
     @State private var newTagName = ""
     @State private var quickFocusDurationToggleGate = TransientPopoverToggleGate()
@@ -178,348 +177,44 @@ struct SettingsPopover: View {
     }
 
     private var mainContent: some View {
-        VStack(spacing: FocusPanelSpacing.md) {
-            headerRow(title: focusTimerManager.state.currentPhase.title, showsBack: false)
-            quickFocusDurationSection
-            taskMetadataSection
-            statisticsSection
-            controlSection
-        }
-        .padding(FocusPanelChrome.compactPadding)
-        .frame(
-            width: SettingsPopoverLayout.mainSize.width,
-            height: SettingsPopoverLayout.mainSize.height,
-            alignment: .top
-        )
-    }
-
-    private var settingsContent: some View {
-        VStack(spacing: FocusPanelSpacing.sm) {
-            headerRow(title: "设置", showsBack: true)
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
-                    settingsSection(title: "计时选项") {
-                        VStack(spacing: 0) {
-                            settingsInputRow(
-                                title: "番茄时长",
-                                value: $focusMinutes,
-                                suffix: "分钟",
-                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.focusMinutesField
-                            ) { updateFocusDuration() }
-
-                            settingsDivider
-
-                            settingsInputRow(
-                                title: "短休息时长",
-                                value: $shortBreakMinutes,
-                                suffix: "分钟",
-                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.shortBreakMinutesField
-                            ) { updateShortBreakDuration() }
-
-                            settingsDivider
-
-                            settingsInputRow(
-                                title: "长休息时长",
-                                value: $longBreakMinutes,
-                                suffix: "分钟",
-                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.longBreakMinutesField
-                            ) { updateLongBreakDuration() }
-
-                            settingsDivider
-
-                            settingsInputRow(
-                                title: "长休息间隔番茄数",
-                                value: $longBreakInterval,
-                                suffix: "个",
-                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.intervalField,
-                                maxLength: 2,
-                                upperBound: 10
-                            ) { updateLongBreakInterval() }
-                        }
-                    }
-
-                    settingsSection(title: "自动选项") {
-                        VStack(spacing: 0) {
-                            settingsToggleRow(
-                                title: "自动开始下个番茄",
-                                isOn: $autoStartNextFocus,
-                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.autoStartNextFocusToggle
-                            )
-
-                            settingsDivider
-
-                            settingsToggleRow(
-                                title: "自动开始休息",
-                                isOn: $autoStartBreak,
-                                accessibilityID: FocusTimerAccessibilityID.SettingsPopover.autoStartBreakToggle
-                            )
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
-        }
-        .padding(FocusPanelSpacing.md)
-        .frame(
-            width: SettingsPopoverLayout.settingsSize.width,
-            height: SettingsPopoverLayout.settingsSize.height,
-            alignment: .top
-        )
-        .onChange(of: autoStartBreak) { _, newValue in
-            var configuration = focusTimerManager.configuration
-            configuration.autoStartBreak = newValue
-            focusTimerManager.updateConfiguration(configuration)
-        }
-        .onChange(of: autoStartNextFocus) { _, newValue in
-            var configuration = focusTimerManager.configuration
-            configuration.autoStartNextFocus = newValue
-            focusTimerManager.updateConfiguration(configuration)
-        }
-    }
-
-    private var statisticsContent: some View {
-        VStack(spacing: 0) {
-            PopoverHeaderBar(
-                title: "统计概览",
-                backAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.backButton,
-                onBack: { panel = .main }
-            ) {
-                Button(action: openStatisticsWindow) {
-                    Text("统计")
-                        .font(FocusPanelTypography.supportingText)
-                }
-                .buttonStyle(.plain)
-                .disabled(!canOpenStatisticsDetail)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsDetailButton)
-            }
-            .padding(.horizontal, FocusPanelChrome.compactPadding)
-            .padding(.top, FocusPanelSpacing.md)
-
-            StatisticsOverviewView(
-                statistics: dashboardStats,
-                recentSessions: Array(recentSessions.prefix(30))
-            )
-            .padding(.top, FocusPanelSpacing.xxs)
-        }
-        .frame(
-            width: SettingsPopoverLayout.statisticsSize.width,
-            height: SettingsPopoverLayout.statisticsSize.height,
-            alignment: .top
-        )
-    }
-
-    private func headerRow(title: String, showsBack: Bool) -> some View {
-        PopoverHeaderBar(
-            title: title,
-            titleAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.phaseTitle,
-            backAccessibilityID: showsBack ? FocusTimerAccessibilityID.SettingsPopover.backButton : nil,
-            onBack: showsBack ? { panel = .main } : nil
+        SettingsPopoverMainPanel(
+            phaseTitle: focusTimerManager.state.currentPhase.title,
+            progressText: focusTimerManager.state.progressText,
+            canShowStatistics: canShowStatistics,
+            formattedFocusDuration: formattedFocusDuration,
+            isQuickFocusDurationEditorPresented: $isQuickFocusDurationEditorPresented,
+            quickFocusMinutes: $quickFocusMinutes,
+            quickFocusDurationFieldFocused: $isQuickFocusDurationFieldFocused,
+            canApplyQuickFocusDuration: canApplyQuickFocusDuration,
+            taskName: taskNameBinding,
+            isTagEditorPresented: $isTagEditorPresented,
+            tagEditorMode: tagEditorMode,
+            newTagName: $newTagName,
+            tagEditorFieldFocused: $isTagEditorFieldFocused,
+            canSubmitTagEditor: canSubmitTagEditor,
+            dashboardStats: dashboardStats,
+            mainButtonTitle: mainButtonTitle,
+            mainButtonIcon: mainButtonIcon,
+            canSkip: focusTimerManager.state.canSkip,
+            canReset: focusTimerManager.state.canReset,
+            onOpenSettings: { panel = .settings },
+            onOpenStatistics: showStatisticsOverview,
+            onToggleQuickFocusDurationEditor: toggleQuickFocusDurationEditor,
+            onPrepareQuickFocusDurationEditor: syncQuickFocusDurationField,
+            onDismissQuickFocusDurationEditor: dismissQuickFocusDurationEditor,
+            onApplyQuickFocusDuration: applyQuickFocusDuration,
+            onPrepareTagEditor: prepareTagEditor,
+            onDismissTagEditor: dismissTagEditor,
+            onSubmitTagEditor: submitTagEditor,
+            onMainButton: mainButtonAction,
+            onSkip: focusTimerManager.skipCurrentPhase,
+            onReset: focusTimerManager.resetCurrentPhase
         ) {
-            if !showsBack {
-                Text(focusTimerManager.state.progressText)
-                    .font(FocusPanelTypography.supportingText)
-                    .monospacedDigit()
-                    .foregroundColor(.secondary)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.progressLabel)
-
-                Button(action: { panel = .settings }) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(FocusPanelTypography.controlIcon)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.settingsButton)
-
-                Button(action: showStatisticsOverview) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(FocusPanelTypography.controlIcon)
-                }
-                .buttonStyle(.plain)
-                .disabled(!canShowStatistics)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsButton)
-            }
-        }
-    }
-
-    private var statisticsSection: some View {
-        FocusPanelGroup {
-            VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
-                statisticsRow(title: "今日", period: dashboardStats.today)
-                statisticsRow(title: "本周", period: dashboardStats.week)
-            }
-        }
-    }
-
-    private var quickFocusDurationSection: some View {
-        Button(action: toggleQuickFocusDurationEditor) {
-            Text(formattedFocusDuration)
-                .font(FocusPanelTypography.timerValue)
-                .monospacedDigit()
-                .foregroundColor(.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, FocusPanelSpacing.sm)
-                .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
-        }
-        .buttonStyle(.plain)
-        .popover(
-            isPresented: $isQuickFocusDurationEditorPresented,
-            attachmentAnchor: .point(.bottom),
-            arrowEdge: .top
-        ) {
-            quickFocusDurationEditor
-        }
-        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationButton)
-    }
-
-    private var quickFocusDurationEditor: some View {
-        VStack(spacing: FocusPanelSpacing.lg) {
-            HStack(spacing: FocusPanelSpacing.md) {
-                TextField("", text: $quickFocusMinutes)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 108)
-                    .multilineTextAlignment(.center)
-                    .focused($isQuickFocusDurationFieldFocused)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationField)
-                    .onChange(of: quickFocusMinutes) { _, newValue in
-                        quickFocusMinutes = FocusTimerDurationParser.sanitizeNumericInput(
-                            newValue,
-                            maxLength: 3
-                        )
-                    }
-                    .onSubmit(applyQuickFocusDuration)
-
-                Text("分钟")
-                    .font(FocusPanelTypography.bodyLabel)
-                    .foregroundColor(.secondary)
-            }
-
-            HStack(spacing: FocusPanelSpacing.sm) {
-                Button("取消", role: .cancel, action: dismissQuickFocusDurationEditor)
-                    .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationCancelButton)
-
-                Button("确定", action: applyQuickFocusDuration)
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-                    .disabled(!canApplyQuickFocusDuration)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationConfirmButton)
-            }
-        }
-        .padding(FocusPanelSpacing.xl)
-        .frame(width: 196)
-        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.quickFocusDurationEditor)
-        .onAppear {
-            syncQuickFocusDurationField()
-            Task { @MainActor in
-                isQuickFocusDurationFieldFocused = true
-            }
-        }
-    }
-
-    private var taskMetadataSection: some View {
-        VStack(alignment: .leading, spacing: FocusPanelSpacing.xs) {
-            Text("分类与说明")
-                .font(FocusPanelTypography.supportingText)
-                .foregroundColor(.secondary)
-
-            HStack(spacing: FocusPanelSpacing.sm) {
-                categoryPickerField
-
-                TextField("补充说明", text: taskNameBinding)
-                    .textFieldStyle(.plain)
-                    .lineLimit(1)
-                    .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.taskNameField)
-                    .padding(.horizontal, FocusPanelSpacing.md)
-                    .frame(height: FocusPanelControl.fieldHeight)
-                    .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
-            }
-        }
-        .popover(
-            isPresented: $isTagEditorPresented,
-            attachmentAnchor: .point(.bottom),
-            arrowEdge: .top
-        ) {
-            tagEditor
-        }
-    }
-
-    private var tagEditor: some View {
-        VStack(alignment: .leading, spacing: FocusPanelSpacing.lg) {
-            Text(tagEditorMode.title)
-                .font(FocusPanelTypography.sectionTitle)
-
-            TextField(tagEditorMode.placeholder, text: $newTagName)
-                .textFieldStyle(.roundedBorder)
-                .focused($isTagEditorFieldFocused)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.tagEditorField)
-                .onChange(of: newTagName) { _, newValue in
-                    newTagName = FocusTagCatalog.sanitize(
-                        newValue,
-                        maxLength: FocusTagCatalog.maxTagLength
-                    )
-                }
-                .onSubmit(submitTagEditor)
-
-            HStack(spacing: FocusPanelSpacing.sm) {
-                Button("取消", role: .cancel, action: dismissTagEditor)
-                    .buttonStyle(.bordered)
-                    .frame(maxWidth: .infinity)
-
-                Button(tagEditorMode.confirmTitle, action: submitTagEditor)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!canSubmitTagEditor)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(FocusPanelSpacing.xl)
-        .frame(width: 208)
-        .onAppear {
-            if tagEditorMode == .create {
-                newTagName = ""
-            } else {
-                switch tagEditorMode {
-                case .create:
-                    newTagName = ""
-                case .rename(let originalName):
-                    newTagName = originalName
-                }
-            }
-
-            Task { @MainActor in
-                isTagEditorFieldFocused = true
-            }
-        }
-    }
-
-    private var categoryPickerField: some View {
-        Button(action: toggleCategoryPicker) {
-            HStack(spacing: FocusPanelSpacing.sm) {
-                Text(selectedTagTitle)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.secondary)
-            }
-            .font(FocusPanelTypography.bodyLabel)
-            .foregroundColor(.primary)
-            .padding(.horizontal, FocusPanelSpacing.md)
-            .frame(width: FocusPanelControl.pickerWidth, height: FocusPanelControl.fieldHeight, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
-        .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.categoryPicker)
-        .popover(
-            isPresented: $isCategoryPickerPresented,
-            attachmentAnchor: .point(.bottom),
-            arrowEdge: .top
-        ) {
-            CategoryPickerPopoverContent(
+            SettingsPopoverCategoryPickerField(
+                isPresented: $isCategoryPickerPresented,
                 availableTags: focusTimerManager.availableTags,
                 selectedTagName: focusTimerManager.selectedTagName,
-                untaggedTitle: FocusTagCatalog.untaggedName,
+                selectedTagTitle: selectedTagTitle,
                 onSelectTag: selectTagFromPicker,
                 onCreateTag: openCreateTagEditor,
                 onRenameTag: openRenameTagEditor(for:),
@@ -528,148 +223,32 @@ struct SettingsPopover: View {
         }
     }
 
-    private var controlSection: some View {
-        VStack(spacing: FocusPanelSpacing.xs) {
-            Button(action: mainButtonAction) {
-                HStack(spacing: FocusPanelSpacing.xs) {
-                    Image(systemName: mainButtonIcon)
-                    Text(mainButtonTitle)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.regular)
-            .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.mainButton)
-
-            HStack(spacing: FocusPanelSpacing.xs) {
-                Button(action: focusTimerManager.skipCurrentPhase) {
-                    HStack(spacing: FocusPanelSpacing.xxs) {
-                        Image(systemName: "forward.fill")
-                        Text("跳过")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
-                .disabled(!focusTimerManager.state.canSkip)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.skipButton)
-
-                Button(action: focusTimerManager.resetCurrentPhase) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.regular)
-                .disabled(!focusTimerManager.state.canReset)
-                .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.resetButton)
-            }
-        }
+    private var settingsContent: some View {
+        SettingsPopoverSettingsPanel(
+            focusMinutes: $focusMinutes,
+            shortBreakMinutes: $shortBreakMinutes,
+            longBreakMinutes: $longBreakMinutes,
+            longBreakInterval: $longBreakInterval,
+            autoStartNextFocus: $autoStartNextFocus,
+            autoStartBreak: $autoStartBreak,
+            onBack: { panel = .main },
+            onFocusDurationChange: updateFocusDuration,
+            onShortBreakDurationChange: updateShortBreakDuration,
+            onLongBreakDurationChange: updateLongBreakDuration,
+            onLongBreakIntervalChange: updateLongBreakInterval,
+            onAutoStartNextFocusChange: updateAutoStartNextFocus,
+            onAutoStartBreakChange: updateAutoStartBreak
+        )
     }
 
-    private var mainButtonTitle: String {
-        switch focusTimerManager.state.status {
-        case .idle:
-            switch focusTimerManager.state.currentPhase {
-            case .focus:
-                return "开始"
-            case .shortBreak, .longBreak:
-                return "开始休息"
-            }
-        case .running:
-            return "暂停"
-        case .paused:
-            return "继续"
-        }
-    }
-
-    private var mainButtonIcon: String {
-        switch focusTimerManager.state.status {
-        case .idle:
-            return "play.fill"
-        case .running:
-            return "pause.fill"
-        case .paused:
-            return "play.circle.fill"
-        }
-    }
-
-    private func statisticsRow(title: String, period: FocusStatisticsPeriod) -> some View {
-        HStack(spacing: FocusPanelSpacing.lg) {
-            Text("\(title):")
-                .font(FocusPanelTypography.supportingText)
-                .foregroundColor(.secondary)
-            Spacer(minLength: FocusPanelSpacing.lg)
-            Text(FocusDisplayFormatter.summaryDuration(period.totalDuration))
-                .font(FocusPanelTypography.bodyLabel)
-                .foregroundColor(.secondary)
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.9)
-        }
-    }
-
-    private func settingsSection<Content: View>(
-        title: String,
-        @ViewBuilder content: @escaping () -> Content
-    ) -> some View {
-        FocusPanelSection(title: title) {
-            FocusPanelGroup {
-                content()
-            }
-        }
-    }
-
-    private var settingsDivider: some View {
-        FocusPanelDivider()
-    }
-
-    private func settingsInputRow(
-        title: String,
-        value: Binding<String>,
-        suffix: String,
-        accessibilityID: String,
-        maxLength: Int = 3,
-        upperBound: Int? = nil,
-        onCommit: @escaping () -> Void
-    ) -> some View {
-        FocusPanelFormRow(title: title, labelWidth: 82) {
-            HStack(spacing: FocusPanelSpacing.xs) {
-                TextField("", text: value)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.mini)
-                    .frame(width: FocusPanelControl.numericFieldWidth)
-                    .multilineTextAlignment(.center)
-                    .accessibilityIdentifier(accessibilityID)
-                    .onChange(of: value.wrappedValue) { _, newValue in
-                        value.wrappedValue = FocusTimerDurationParser.sanitizeNumericInput(
-                            newValue,
-                            maxLength: maxLength,
-                            upperBound: upperBound
-                        )
-                        onCommit()
-                    }
-
-                Text(suffix)
-                    .font(FocusPanelTypography.supportingText)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .frame(width: FocusPanelControl.unitLabelWidth, alignment: .leading)
-            }
-        }
-    }
-
-    private func settingsToggleRow(
-        title: String,
-        isOn: Binding<Bool>,
-        accessibilityID: String
-    ) -> some View {
-        FocusPanelFormRow(title: title, labelWidth: 112) {
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .accessibilityIdentifier(accessibilityID)
-        }
+    private var statisticsContent: some View {
+        SettingsPopoverStatisticsPanel(
+            canOpenStatisticsDetail: canOpenStatisticsDetail,
+            dashboardStats: dashboardStats,
+            recentSessions: recentSessions,
+            onBack: { panel = .main },
+            onOpenStatistics: openStatisticsWindow
+        )
     }
 
     private func syncConfigurationFields() {
@@ -728,6 +307,18 @@ struct SettingsPopover: View {
         focusTimerManager.updateConfiguration(configuration)
     }
 
+    private func updateAutoStartBreak(_ value: Bool) {
+        var configuration = focusTimerManager.configuration
+        configuration.autoStartBreak = value
+        focusTimerManager.updateConfiguration(configuration)
+    }
+
+    private func updateAutoStartNextFocus(_ value: Bool) {
+        var configuration = focusTimerManager.configuration
+        configuration.autoStartNextFocus = value
+        focusTimerManager.updateConfiguration(configuration)
+    }
+
     private func minutesString(from duration: TimeInterval) -> String {
         String(max(1, Int(duration.rounded(.down)) / 60))
     }
@@ -762,10 +353,6 @@ struct SettingsPopover: View {
         onPreferredSizeChange?(preferredSize)
     }
 
-    private func toggleCategoryPicker() {
-        isCategoryPickerPresented.toggle()
-    }
-
     private func openCreateTagEditor() {
         isCategoryPickerPresented = false
         tagEditorMode = .create
@@ -780,6 +367,15 @@ struct SettingsPopover: View {
         tagEditorMode = .rename(originalName: tagName)
         DispatchQueue.main.async {
             isTagEditorPresented = true
+        }
+    }
+
+    private func prepareTagEditor() {
+        switch tagEditorMode {
+        case .create:
+            newTagName = ""
+        case .rename(let originalName):
+            newTagName = originalName
         }
     }
 
@@ -883,6 +479,33 @@ struct SettingsPopover: View {
             return !focusTimerManager.availableTags.contains(normalized)
         }
     }
+
+    private var mainButtonTitle: String {
+        switch focusTimerManager.state.status {
+        case .idle:
+            switch focusTimerManager.state.currentPhase {
+            case .focus:
+                return "开始"
+            case .shortBreak, .longBreak:
+                return "开始休息"
+            }
+        case .running:
+            return "暂停"
+        case .paused:
+            return "继续"
+        }
+    }
+
+    private var mainButtonIcon: String {
+        switch focusTimerManager.state.status {
+        case .idle:
+            return "play.fill"
+        case .running:
+            return "pause.fill"
+        case .paused:
+            return "play.circle.fill"
+        }
+    }
 }
 
 struct SettingsPopover_Previews: PreviewProvider {
@@ -912,266 +535,5 @@ struct TransientPopoverToggleGate {
         }
 
         return shouldSuppress
-    }
-}
-
-private struct CategoryPickerPopoverContent: View {
-    let availableTags: [String]
-    let selectedTagName: String?
-    let untaggedTitle: String
-    let onSelectTag: (String?) -> Void
-    let onCreateTag: () -> Void
-    let onRenameTag: (String) -> Void
-    let onDeleteTag: (String) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: FocusPanelSpacing.xs) {
-            Button(action: { onSelectTag(nil) }) {
-                pickerRowLabel(title: untaggedTitle, isSelected: selectedTagName == nil)
-            }
-            .buttonStyle(.plain)
-
-            if !availableTags.isEmpty {
-                Divider()
-                    .padding(.vertical, FocusPanelSpacing.xxs)
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: FocusPanelSpacing.xxs) {
-                        ForEach(availableTags, id: \.self) { tag in
-                            CategoryPickerTagRowView(
-                                title: tag,
-                                isSelected: selectedTagName == tag,
-                                accessibilityIdentifier: "categoryPicker.row.\(tag)",
-                                onSelect: { onSelectTag(tag) },
-                                onRename: { onRenameTag(tag) },
-                                onDelete: { onDeleteTag(tag) }
-                            )
-                            .frame(height: FocusPanelControl.compactRowHeight)
-                        }
-                    }
-                }
-                .frame(maxHeight: min(CGFloat(availableTags.count) * 34, 180))
-            }
-
-            Divider()
-                .padding(.top, FocusPanelSpacing.xxs)
-
-            Button(action: onCreateTag) {
-                FocusSelectableRow {
-                    Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("新建分类")
-                    Spacer(minLength: 0)
-                }
-                .font(FocusPanelTypography.bodyLabel)
-                .foregroundColor(.primary)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(FocusPanelSpacing.md)
-        .frame(width: FocusPanelControl.pickerPopoverWidth)
-    }
-
-    private func pickerRowLabel(title: String, isSelected: Bool) -> some View {
-        FocusSelectableRow(isSelected: isSelected) {
-            HStack(spacing: FocusPanelSpacing.sm) {
-                Text(title)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if isSelected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.accentColor)
-                }
-            }
-        }
-        .font(FocusPanelTypography.bodyLabel)
-        .foregroundColor(.primary)
-    }
-}
-
-struct CategoryPickerTagRowView: NSViewRepresentable {
-    let title: String
-    let isSelected: Bool
-    let accessibilityIdentifier: String?
-    let onSelect: () -> Void
-    let onRename: () -> Void
-    let onDelete: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(
-            onSelect: onSelect,
-            onRename: onRename,
-            onDelete: onDelete
-        )
-    }
-
-    func makeNSView(context: Context) -> CategoryPickerTagRowControl {
-        let view = CategoryPickerTagRowControl()
-        if let accessibilityIdentifier {
-            view.identifier = NSUserInterfaceItemIdentifier(accessibilityIdentifier)
-        }
-        view.coordinator = context.coordinator
-        view.title = title
-        view.isSelected = isSelected
-        return view
-    }
-
-    func updateNSView(_ nsView: CategoryPickerTagRowControl, context: Context) {
-        context.coordinator.onSelect = onSelect
-        context.coordinator.onRename = onRename
-        context.coordinator.onDelete = onDelete
-        nsView.coordinator = context.coordinator
-        nsView.title = title
-        nsView.isSelected = isSelected
-    }
-
-    final class Coordinator: NSObject {
-        var onSelect: () -> Void
-        var onRename: () -> Void
-        var onDelete: () -> Void
-
-        init(
-            onSelect: @escaping () -> Void,
-            onRename: @escaping () -> Void,
-            onDelete: @escaping () -> Void
-        ) {
-            self.onSelect = onSelect
-            self.onRename = onRename
-            self.onDelete = onDelete
-        }
-
-        func showContextMenu(from view: NSView) {
-            let menu = makeContextMenu()
-            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: view.bounds.maxY - 2), in: view)
-        }
-
-        func makeContextMenu() -> NSMenu {
-            let menu = NSMenu()
-            menu.addItem(menuItem(title: "重命名分类…") { [weak self] in
-                self?.onRename()
-            })
-            menu.addItem(menuItem(title: "删除分类") { [weak self] in
-                self?.onDelete()
-            })
-            return menu
-        }
-
-        @objc
-        private func handleMenuItem(_ sender: NSMenuItem) {
-            (sender.representedObject as? CategoryPickerMenuAction)?.handler()
-        }
-
-        private func menuItem(title: String, handler: @escaping () -> Void) -> NSMenuItem {
-            let item = NSMenuItem(title: title, action: #selector(handleMenuItem(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = CategoryPickerMenuAction(handler: handler)
-            return item
-        }
-    }
-}
-
-final class CategoryPickerTagRowControl: NSControl {
-    weak var coordinator: CategoryPickerTagRowView.Coordinator?
-    private let titleField = NSTextField(labelWithString: "")
-    private let checkmarkImageView = NSImageView()
-
-    var title: String = "" {
-        didSet {
-            titleField.stringValue = title
-        }
-    }
-
-    var isSelected: Bool = false {
-        didSet {
-            updateSelectionState()
-        }
-    }
-
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
-        setupView()
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        bounds.contains(point) ? self : nil
-    }
-
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-        true
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        if event.modifierFlags.contains(.control) {
-            coordinator?.showContextMenu(from: self)
-            return
-        }
-
-        coordinator?.onSelect()
-    }
-
-    override func rightMouseDown(with event: NSEvent) {
-        coordinator?.showContextMenu(from: self)
-    }
-
-    override func menu(for event: NSEvent) -> NSMenu? {
-        coordinator?.makeContextMenu()
-    }
-
-    private func setupView() {
-        wantsLayer = true
-        layer?.cornerRadius = FocusPanelCornerRadius.small
-        layer?.masksToBounds = true
-
-        titleField.translatesAutoresizingMaskIntoConstraints = false
-        titleField.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        titleField.textColor = .labelColor
-        titleField.lineBreakMode = .byTruncatingTail
-        titleField.maximumNumberOfLines = 1
-        titleField.cell?.wraps = false
-        titleField.cell?.isScrollable = true
-        titleField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        checkmarkImageView.translatesAutoresizingMaskIntoConstraints = false
-        checkmarkImageView.image = NSImage(
-            systemSymbolName: "checkmark",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(.init(pointSize: 10, weight: .semibold))
-        checkmarkImageView.contentTintColor = .controlAccentColor
-        checkmarkImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
-
-        addSubview(titleField)
-        addSubview(checkmarkImageView)
-
-        NSLayoutConstraint.activate([
-            titleField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
-            titleField.trailingAnchor.constraint(lessThanOrEqualTo: checkmarkImageView.leadingAnchor, constant: -8),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor),
-            checkmarkImageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-            checkmarkImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            checkmarkImageView.widthAnchor.constraint(equalToConstant: 10),
-            checkmarkImageView.heightAnchor.constraint(equalToConstant: 10)
-        ])
-
-        updateSelectionState()
-    }
-
-    private func updateSelectionState() {
-        layer?.backgroundColor = (
-            isSelected ? FocusPanelNSColor.selectionFill : FocusPanelNSColor.rowFill
-        ).cgColor
-        checkmarkImageView.isHidden = !isSelected
-    }
-}
-
-private final class CategoryPickerMenuAction: NSObject {
-    let handler: () -> Void
-
-    init(handler: @escaping () -> Void) {
-        self.handler = handler
     }
 }

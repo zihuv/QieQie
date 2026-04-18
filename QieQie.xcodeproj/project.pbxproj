@@ -15,7 +15,6 @@
 		E1011 /* SettingsPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1010; };
 		E1013 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1012; };
 		E1015 /* FocusSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1014; };
-		E1017 /* FocusStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1016; };
 		E1019 /* FocusHistoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1018; };
 		E1021 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1020; };
 		E1023 /* FocusTimerEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1022; };
@@ -28,7 +27,24 @@
 		E1037 /* FocusHistoryAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1036; };
 		E1039 /* FocusHistoryAnalyticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1038; };
 		E1041 /* PopoverHeaderBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1040; };
-		E1043 /* FocusPanelTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1042; };
+		E1045 /* SettingsPopoverMainPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1044; };
+		E1047 /* SettingsPopoverPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1046; };
+		E1049 /* SettingsPopoverCategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1048; };
+		E1053 /* StatisticsOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1052; };
+		E1055 /* FocusPanelTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1054; };
+		E1057 /* FocusPanelSurfaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1056; };
+		E1059 /* FocusPanelComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1058; };
+		E1061 /* StatusBarCountdownPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1060; };
+		E1063 /* StatisticsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1062; };
+		E1065 /* FocusCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1064; };
+		E1067 /* FocusStatisticsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1066; };
+		E1069 /* FocusDisplayFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1068; };
+		E1071 /* HistorySummarySections.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1070; };
+		E1073 /* HistoryRecordsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1072; };
+		E1075 /* HistorySectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1074; };
+		E1077 /* HistoryTrendSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1076; };
+		E1079 /* FocusTimerScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1078; };
+		E1081 /* FocusTimerStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1080; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,7 +66,6 @@
 		E1010 /* SettingsPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopover.swift; sourceTree = "<group>"; };
 		E1012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E1014 /* FocusSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSession.swift; sourceTree = "<group>"; };
-		E1016 /* FocusStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatistics.swift; sourceTree = "<group>"; };
 		E1018 /* FocusHistoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryManager.swift; sourceTree = "<group>"; };
 		E1020 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		E1022 /* FocusTimerEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerEngine.swift; sourceTree = "<group>"; };
@@ -63,7 +78,24 @@
 		E1036 /* FocusHistoryAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryAnalytics.swift; sourceTree = "<group>"; };
 		E1038 /* FocusHistoryAnalyticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusHistoryAnalyticsTests.swift; sourceTree = "<group>"; };
 		E1040 /* PopoverHeaderBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverHeaderBar.swift; sourceTree = "<group>"; };
-		E1042 /* FocusPanelTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelTheme.swift; sourceTree = "<group>"; };
+		E1044 /* SettingsPopoverMainPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopoverMainPanel.swift; sourceTree = "<group>"; };
+		E1046 /* SettingsPopoverPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopoverPanels.swift; sourceTree = "<group>"; };
+		E1048 /* SettingsPopoverCategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPopoverCategoryPicker.swift; sourceTree = "<group>"; };
+		E1052 /* StatisticsOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsOverviewView.swift; sourceTree = "<group>"; };
+		E1054 /* FocusPanelTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelTokens.swift; sourceTree = "<group>"; };
+		E1056 /* FocusPanelSurfaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelSurfaces.swift; sourceTree = "<group>"; };
+		E1058 /* FocusPanelComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelComponents.swift; sourceTree = "<group>"; };
+		E1060 /* StatusBarCountdownPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarCountdownPresenter.swift; sourceTree = "<group>"; };
+		E1062 /* StatisticsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsWindowController.swift; sourceTree = "<group>"; };
+		E1064 /* FocusCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCalendar.swift; sourceTree = "<group>"; };
+		E1066 /* FocusStatisticsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusStatisticsModels.swift; sourceTree = "<group>"; };
+		E1068 /* FocusDisplayFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusDisplayFormatter.swift; sourceTree = "<group>"; };
+		E1070 /* HistorySummarySections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySummarySections.swift; sourceTree = "<group>"; };
+		E1072 /* HistoryRecordsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryRecordsSection.swift; sourceTree = "<group>"; };
+		E1074 /* HistorySectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySectionHeader.swift; sourceTree = "<group>"; };
+		E1076 /* HistoryTrendSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryTrendSection.swift; sourceTree = "<group>"; };
+		E1078 /* FocusTimerScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerScheduler.swift; sourceTree = "<group>"; };
+		E1080 /* FocusTimerStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerStorage.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2001 /* QieQie.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QieQie.entitlements; sourceTree = "<group>"; };
 		E9000 /* QieQie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QieQie.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -126,6 +158,8 @@
 			children = (
 				E1004,
 				E1006,
+				E1078,
+				E1080,
 				E1022,
 				E1024,
 			);
@@ -135,11 +169,18 @@
 		E5006 /* History */ = {
 			isa = PBXGroup;
 			children = (
+				E1064,
 				E1014,
-				E1016,
+				E1066,
+				E1068,
 				E1036,
 				E1018,
 				E1020,
+				E1070,
+				E1072,
+				E1074,
+				E1076,
+				E1052,
 			);
 			path = History;
 			sourceTree = "<group>";
@@ -147,11 +188,18 @@
 		E5007 /* UI */ = {
 			isa = PBXGroup;
 			children = (
-				E1042,
+				E1054,
+				E1056,
+				E1058,
 				E1012,
 				E1010,
+				E1044,
+				E1046,
+				E1048,
 				E1040,
 				E1008,
+				E1060,
+				E1062,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -280,14 +328,30 @@
 				E1007,
 				E1009,
 				E1011,
+				E1045 /* SettingsPopoverMainPanel.swift in Sources */,
+				E1047 /* SettingsPopoverPanels.swift in Sources */,
+				E1049 /* SettingsPopoverCategoryPicker.swift in Sources */,
 				E1013,
-				E1043,
+				E1055 /* FocusPanelTokens.swift in Sources */,
+				E1057 /* FocusPanelSurfaces.swift in Sources */,
+				E1059 /* FocusPanelComponents.swift in Sources */,
 				E1041,
+				E1061 /* StatusBarCountdownPresenter.swift in Sources */,
+				E1063 /* StatisticsWindowController.swift in Sources */,
+				E1065 /* FocusCalendar.swift in Sources */,
 				E1015,
-				E1017,
+				E1067 /* FocusStatisticsModels.swift in Sources */,
+				E1069 /* FocusDisplayFormatter.swift in Sources */,
 				E1037,
 				E1019,
 				E1021,
+				E1071 /* HistorySummarySections.swift in Sources */,
+				E1073 /* HistoryRecordsSection.swift in Sources */,
+				E1075 /* HistorySectionHeader.swift in Sources */,
+				E1077 /* HistoryTrendSection.swift in Sources */,
+				E1053 /* StatisticsOverviewView.swift in Sources */,
+				E1079 /* FocusTimerScheduler.swift in Sources */,
+				E1081 /* FocusTimerStorage.swift in Sources */,
 				E1023,
 				E1025,
 			);
