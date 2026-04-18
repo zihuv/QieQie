@@ -22,7 +22,7 @@ struct HistoryRecordsSection: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
-                ScrollView(showsIndicators: true) {
+                ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
                         ForEach(Array(daySections.enumerated()), id: \.element.id) { index, section in
                             HistoryTimelineDaySection(section: section)
