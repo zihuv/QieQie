@@ -3,6 +3,7 @@ import SwiftData
 
 enum FocusTagCatalog {
     static let untaggedName = "未分类"
+    static let defaultSessionTitle = "专注"
     static let defaultTags: [String] = []
     static let maxTagLength = 12
 
@@ -43,6 +44,22 @@ enum FocusTagCatalog {
     }
 }
 
+@Model
+final class FocusTagRecord {
+    var id: UUID
+    var name: String
+    var createdAt: Date
+
+    init(
+        name: String,
+        createdAt: Date = Date()
+    ) {
+        self.id = UUID()
+        self.name = name
+        self.createdAt = createdAt
+    }
+}
+
 /// 专注会话数据模型
 /// 用于记录每一次专注时间
 @Model
@@ -75,7 +92,7 @@ final class FocusSession {
     var createdAt: Date
 
     init(
-        taskName: String = "未命名任务",
+        taskName: String = FocusTagCatalog.defaultSessionTitle,
         tagName: String? = nil,
         note: String? = nil,
         startTime: Date = Date(),

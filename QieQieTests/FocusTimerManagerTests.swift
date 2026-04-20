@@ -82,6 +82,49 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(secondManager.selectedTagName, "毕设")
     }
 
+    func testMigrationMovesLegacyAvailableTagsIntoSwiftDataCatalog() throws {
+        let defaults = makeUserDefaults()
+        FocusTimerStorage.persistLegacyAvailableTags(["开发", "学习"], in: defaults)
+        FocusTimerStorage.persist(selectedTagName: "会议", in: defaults)
+
+        let historyManager = try makeHistoryManager()
+        historyManager.migrateStorage(using: defaults)
+
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
+
+        XCTAssertEqual(manager.availableTags, ["开发", "学习", "会议"])
+        XCTAssertEqual(FocusTimerStorage.loadLegacyAvailableTags(from: defaults), [])
+    }
+
+    func testMigrationNormalizesLegacyHistorySessionsWithoutLosingNote() throws {
+        let defaults = makeUserDefaults()
+        let container = try makeHistoryContainer()
+        let historyManager = FocusHistoryManager(modelContainer: container)
+        let completedAt = Date(timeIntervalSinceReferenceDate: 400)
+        let legacySession = FocusSession(
+            taskName: "写周报",
+            tagName: " 开发 ",
+            note: nil,
+            startTime: completedAt.addingTimeInterval(-(25 * 60)),
+            endTime: completedAt,
+            duration: 25 * 60,
+            isCompleted: true
+        )
+        container.mainContext.insert(legacySession)
+        try container.mainContext.save()
+
+        historyManager.migrateStorage(using: defaults)
+
+        let migratedSession = try XCTUnwrap(historyManager.getAllSessions().first)
+        XCTAssertEqual(migratedSession.tagName, "开发")
+        XCTAssertEqual(migratedSession.note, "写周报")
+        XCTAssertEqual(migratedSession.taskName, "写周报")
+        XCTAssertEqual(historyManager.getAvailableTags(), ["开发"])
+    }
+
     func testRenameTagUpdatesSelectionAvailableTagsAndHistorySessions() throws {
         let defaults = makeUserDefaults()
         let historyManager = try makeHistoryManager()
@@ -508,10 +551,17 @@ final class FocusTimerManagerTests: XCTestCase {
         return defaults
     }
 
-    private func makeHistoryManager() throws -> FocusHistoryManager {
+    private func makeHistoryContainer() throws -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
-        return FocusHistoryManager(modelContainer: container)
+        return try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
+    }
+
+    private func makeHistoryManager() throws -> FocusHistoryManager {
+        try FocusHistoryManager(modelContainer: makeHistoryContainer())
     }
 }
 

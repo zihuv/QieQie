@@ -33,11 +33,18 @@ final class FocusTimerManager: ObservableObject {
         self.focusCompletionRecorder = focusCompletionRecorder
         self.state = FocusTimerEngine().makeInitialState(configuration: initialConfiguration)
         self.currentTaskName = FocusTimerStorage.loadCurrentTaskName(from: userDefaults)
-        let loadedTags = FocusTimerStorage.loadAvailableTags(from: userDefaults)
         let loadedSelectedTagName = FocusTimerStorage.loadSelectedTagName(from: userDefaults)
-        self.availableTags = FocusTagCatalog.normalizedTags(
-            from: loadedTags + (loadedSelectedTagName.map { [$0] } ?? [])
-        )
+        if let focusHistoryManager {
+            if let loadedSelectedTagName {
+                focusHistoryManager.ensureTagExists(named: loadedSelectedTagName)
+            }
+            self.availableTags = focusHistoryManager.getAvailableTags()
+        } else {
+            let loadedTags = FocusTimerStorage.loadLegacyAvailableTags(from: userDefaults)
+            self.availableTags = FocusTagCatalog.normalizedTags(
+                from: loadedTags + (loadedSelectedTagName.map { [$0] } ?? [])
+            )
+        }
         self.selectedTagName = loadedSelectedTagName
     }
 
@@ -62,9 +69,14 @@ final class FocusTimerManager: ObservableObject {
     func updateSelectedTagName(_ tagName: String?) {
         let normalized = FocusTagCatalog.normalizeTagName(tagName)
 
-        if let normalized, !availableTags.contains(normalized) {
-            availableTags.append(normalized)
-            FocusTimerStorage.persist(availableTags: availableTags, in: userDefaults)
+        if let normalized {
+            if let focusHistoryManager {
+                focusHistoryManager.ensureTagExists(named: normalized)
+                availableTags = focusHistoryManager.getAvailableTags()
+            } else if !availableTags.contains(normalized) {
+                availableTags.append(normalized)
+                FocusTimerStorage.persistLegacyAvailableTags(availableTags, in: userDefaults)
+            }
         }
 
         guard normalized != selectedTagName else { return }
@@ -79,9 +91,12 @@ final class FocusTimerManager: ObservableObject {
             return nil
         }
 
-        if !availableTags.contains(normalized) {
+        if let focusHistoryManager {
+            focusHistoryManager.ensureTagExists(named: normalized)
+            availableTags = focusHistoryManager.getAvailableTags()
+        } else if !availableTags.contains(normalized) {
             availableTags.append(normalized)
-            FocusTimerStorage.persist(availableTags: availableTags, in: userDefaults)
+            FocusTimerStorage.persistLegacyAvailableTags(availableTags, in: userDefaults)
         }
 
         updateSelectedTagName(normalized)
@@ -96,11 +111,13 @@ final class FocusTimerManager: ObservableObject {
             return false
         }
 
-        let updatedTags = availableTags.filter { $0 != normalized }
+        let updatedTags = focusHistoryManager?.getAvailableTags() ?? availableTags.filter { $0 != normalized }
         guard updatedTags != availableTags else { return true }
 
         availableTags = updatedTags
-        FocusTimerStorage.persist(availableTags: updatedTags, in: userDefaults)
+        if focusHistoryManager == nil {
+            FocusTimerStorage.persistLegacyAvailableTags(updatedTags, in: userDefaults)
+        }
 
         if selectedTagName == normalized {
             selectedTagName = nil
@@ -125,9 +142,13 @@ final class FocusTimerManager: ObservableObject {
         }
 
         var updatedTags = availableTags.map { $0 == normalizedOldName ? normalizedNewName : $0 }
-        updatedTags = FocusTagCatalog.normalizedTags(from: updatedTags)
+        if let focusHistoryManager {
+            updatedTags = focusHistoryManager.getAvailableTags()
+        } else {
+            updatedTags = FocusTagCatalog.normalizedTags(from: updatedTags)
+            FocusTimerStorage.persistLegacyAvailableTags(updatedTags, in: userDefaults)
+        }
         availableTags = updatedTags
-        FocusTimerStorage.persist(availableTags: updatedTags, in: userDefaults)
 
         if selectedTagName == normalizedOldName {
             selectedTagName = normalizedNewName

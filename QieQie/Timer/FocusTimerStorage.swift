@@ -11,7 +11,7 @@ enum FocusTimerStorage {
         static let autoAdvance = "focusTimer.configuration.autoAdvance"
         static let currentTaskName = "focusTimer.currentTaskName"
         static let selectedTagName = "focusTimer.selectedTagName"
-        static let availableTags = "focusTimer.availableTags"
+        static let legacyAvailableTags = "focusTimer.availableTags"
     }
 
     static func persist(
@@ -39,8 +39,8 @@ enum FocusTimerStorage {
         }
     }
 
-    static func persist(availableTags: [String], in userDefaults: UserDefaults) {
-        userDefaults.set(availableTags, forKey: Key.availableTags)
+    static func persistLegacyAvailableTags(_ availableTags: [String], in userDefaults: UserDefaults) {
+        userDefaults.set(availableTags, forKey: Key.legacyAvailableTags)
     }
 
     static func loadConfiguration(from userDefaults: UserDefaults) -> FocusTimerConfiguration {
@@ -75,9 +75,13 @@ enum FocusTimerStorage {
         FocusTagCatalog.normalizeTagName(userDefaults.string(forKey: Key.selectedTagName))
     }
 
-    static func loadAvailableTags(from userDefaults: UserDefaults) -> [String] {
-        let storedTags = userDefaults.stringArray(forKey: Key.availableTags) ?? FocusTagCatalog.defaultTags
+    static func loadLegacyAvailableTags(from userDefaults: UserDefaults) -> [String] {
+        let storedTags = userDefaults.stringArray(forKey: Key.legacyAvailableTags) ?? FocusTagCatalog.defaultTags
         return FocusTagCatalog.normalizedTags(from: storedTags)
+    }
+
+    static func clearLegacyAvailableTags(in userDefaults: UserDefaults) {
+        userDefaults.removeObject(forKey: Key.legacyAvailableTags)
     }
 
     static func normalizeTaskNameInput(_ taskName: String) -> String {

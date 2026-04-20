@@ -359,7 +359,11 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testStatisticsWindowContentUsesStandaloneLayout() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let container = try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
         let historyManager = FocusHistoryManager(modelContainer: container)
         let host = NSHostingController(
             rootView: HistoryView(historyManager: historyManager)
@@ -385,7 +389,11 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testHistoryViewRefreshesWhenReopened() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let container = try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
         let historyManager = FocusHistoryManager(modelContainer: container)
         let initialHost = NSHostingController(rootView: HistoryView(historyManager: historyManager))
         let window = makeWindow(size: StatisticsWindowLayout.defaultSize)
@@ -420,7 +428,11 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testStatisticsOverviewPanelShowsSummaryAndRecentRecord() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let container = try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
         let historyManager = FocusHistoryManager(modelContainer: container)
         let completedAt = Date(timeIntervalSinceReferenceDate: 10_000)
         historyManager.recordCompletedFocus(
@@ -606,7 +618,11 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testMainPanelDoesNotShowStatisticsEntryWhenWindowActionIsAvailable() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let container = try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
         let historyManager = FocusHistoryManager(modelContainer: container)
         let manager = FocusTimerManager(
             focusHistoryManager: historyManager,
@@ -636,7 +652,11 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testStatusBarManagerShowsStandaloneStatisticsWindow() throws {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: FocusSession.self, configurations: configuration)
+        let container = try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
         let historyManager = FocusHistoryManager(modelContainer: container)
         let manager = FocusTimerManager(
             focusHistoryManager: historyManager,
