@@ -218,7 +218,7 @@ final class FocusTimerManager: ObservableObject {
             at: date,
             shouldPreservePause: shouldPreservePause
         )
-        if let duration = result.completedFocusDuration {
+        if let duration = result.recordedFocusDuration {
             focusHistoryManager?.recordCompletedFocus(
                 duration: duration,
                 tagName: FocusTagCatalog.normalizeTagName(selectedTagName),

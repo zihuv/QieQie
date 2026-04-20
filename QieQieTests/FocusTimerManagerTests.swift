@@ -293,7 +293,7 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertNil(manager.state.endTime)
     }
 
-    func testSkipCurrentFocusAdvancesWithoutWaitingForTimerBoundary() throws {
+    func testSkipCurrentFocusImmediatelyDoesNotRecordZeroDuration() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
         var recordedDurations: [TimeInterval] = []
@@ -316,6 +316,33 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(manager.state.cycleFocusCount, 1)
         XCTAssertEqual(manager.state.status(at: clock.now()), .running)
         XCTAssertEqual(recordedDurations, [])
+    }
+
+    func testSkipCurrentFocusRecordsElapsedDurationAndHistory() throws {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let historyManager = try makeHistoryManager()
+        var recordedDurations: [TimeInterval] = []
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults(),
+            focusCompletionRecorder: { duration, _ in
+                recordedDurations.append(duration)
+            }
+        )
+
+        manager.startCurrentPhase()
+        clock.currentDate = clock.currentDate.addingTimeInterval(123)
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(recordedDurations, [123])
+        let session = try XCTUnwrap(historyManager.getAllSessions().first)
+        XCTAssertEqual(session.duration, 123)
+        XCTAssertEqual(session.endTime, clock.now())
+        XCTAssertEqual(session.startTime, clock.now().addingTimeInterval(-123))
     }
 
     func testSkipCurrentFocusStartsBreakImmediatelyWhenAutoBreakIsDisabled() throws {
@@ -405,6 +432,36 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(manager.state.status(at: clock.now()), .paused)
         XCTAssertEqual(manager.state.remainingTime(at: clock.now()), 25 * 60)
         XCTAssertEqual(scheduler.scheduleCallCount, 0)
+    }
+
+    func testSkipCurrentFocusWhilePausedRecordsElapsedDuration() throws {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let historyManager = try makeHistoryManager()
+        var recordedDurations: [TimeInterval] = []
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: makeUserDefaults(),
+            focusCompletionRecorder: { duration, _ in
+                recordedDurations.append(duration)
+            }
+        )
+
+        manager.startCurrentPhase()
+        clock.currentDate = clock.currentDate.addingTimeInterval(3.2)
+        manager.togglePause()
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(recordedDurations, [3])
+        let session = try XCTUnwrap(historyManager.getAllSessions().first)
+        XCTAssertEqual(session.duration, 3)
+        XCTAssertEqual(session.endTime, clock.now())
+        XCTAssertEqual(session.startTime, clock.now().addingTimeInterval(-3))
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .paused)
     }
 
     func testTogglePauseUsesInjectedClockForPauseAndResume() throws {

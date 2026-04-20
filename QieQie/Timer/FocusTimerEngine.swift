@@ -7,7 +7,7 @@ struct FocusTimerResumeResult {
 
 struct FocusTimerAdvanceResult {
     let state: FocusTimerState
-    let completedFocusDuration: TimeInterval?
+    let recordedFocusDuration: TimeInterval?
 }
 
 enum FocusTimerAdvanceTrigger {
@@ -126,6 +126,11 @@ struct FocusTimerEngine {
             } else {
                 .shortBreak
             }
+            let recordedFocusDuration = recordedFocusDuration(
+                for: state,
+                now: now,
+                trigger: trigger
+            )
 
             return FocusTimerAdvanceResult(
                 state: makePhaseState(
@@ -139,7 +144,7 @@ struct FocusTimerEngine {
                     ),
                     now: now
                 ),
-                completedFocusDuration: trigger == .completed ? state.phaseDuration : nil
+                recordedFocusDuration: recordedFocusDuration
             )
         case .shortBreak:
             return FocusTimerAdvanceResult(
@@ -154,7 +159,7 @@ struct FocusTimerEngine {
                     ),
                     now: now
                 ),
-                completedFocusDuration: nil
+                recordedFocusDuration: nil
             )
         case .longBreak:
             return FocusTimerAdvanceResult(
@@ -169,7 +174,7 @@ struct FocusTimerEngine {
                     ),
                     now: now
                 ),
-                completedFocusDuration: nil
+                recordedFocusDuration: nil
             )
         }
     }
@@ -199,5 +204,19 @@ struct FocusTimerEngine {
         trigger: FocusTimerAdvanceTrigger
     ) -> Bool {
         trigger == .skipped || configuration.shouldAutoStartNextPhase(after: phase)
+    }
+
+    private func recordedFocusDuration(
+        for state: FocusTimerState,
+        now: Date,
+        trigger: FocusTimerAdvanceTrigger
+    ) -> TimeInterval? {
+        switch trigger {
+        case .completed:
+            return state.phaseDuration
+        case .skipped:
+            let elapsedDuration = max(0, state.phaseDuration - state.remainingTime(at: now))
+            return elapsedDuration > 0 ? elapsedDuration : nil
+        }
     }
 }
