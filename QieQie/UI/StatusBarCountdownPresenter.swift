@@ -26,7 +26,7 @@ final class StatusBarCountdownPresenter {
     ) {
         switch state.status {
         case .idle:
-            if state.currentPhase == .focus {
+            if shouldShowIdleClockIcon(for: state) {
                 applyIcon(
                     NSImage(systemSymbolName: "clock", accessibilityDescription: "Idle"),
                     to: button,
@@ -162,6 +162,10 @@ final class StatusBarCountdownPresenter {
         button.title = ""
         button.attributedTitle = NSAttributedString(string: "")
         button.contentTintColor = nil
+    }
+
+    private func shouldShowIdleClockIcon(for state: FocusTimerState) -> Bool {
+        state.currentPhase == .focus && state.cycleFocusCount == 0
     }
 
     private func reservedTitleWidth(for state: FocusTimerState) -> CGFloat {

@@ -497,6 +497,49 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
+    func testInitialIdleFocusKeepsClockIconInStatusBar() throws {
+        let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let statusBarManager = StatusBarManager(focusTimerManager: manager)
+
+        manager.state = FocusTimerState(
+            configuration: .default,
+            currentPhase: .focus,
+            cycleFocusCount: 0,
+            phaseDuration: 25 * 60,
+            endTime: nil,
+            isPaused: false,
+            pausedAt: nil
+        )
+        pumpMainRunLoop()
+
+        let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
+        XCTAssertEqual(button.title, "")
+        XCTAssertEqual(button.imagePosition, .imageOnly)
+        XCTAssertNotNil(button.image)
+    }
+
+    func testIdleFocusAfterBreakShowsPendingFocusCountdownInStatusBar() throws {
+        let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let statusBarManager = StatusBarManager(focusTimerManager: manager)
+
+        manager.state = FocusTimerState(
+            configuration: .default,
+            currentPhase: .focus,
+            cycleFocusCount: 1,
+            phaseDuration: 25 * 60,
+            endTime: nil,
+            isPaused: false,
+            pausedAt: nil
+        )
+        pumpMainRunLoop()
+
+        let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
+        XCTAssertEqual(button.imagePosition, .imageOnly)
+        let image = try XCTUnwrap(button.image)
+        XCTAssertFalse(image.isTemplate)
+        XCTAssertGreaterThan(image.size.width, image.size.height * 2)
+    }
+
     func testIdleBreakShowsPendingBreakCountdownInStatusBar() throws {
         let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
         let statusBarManager = StatusBarManager(focusTimerManager: manager)
