@@ -5,6 +5,7 @@ set -euo pipefail
 APP_NAME="QieQie"
 INFO_PLIST="QieQie/Support/Info.plist"
 PROJECT_FILE="QieQie.xcodeproj/project.pbxproj"
+CHANGELOG_FILE="docs/CHANGELOG.md"
 RELEASE_TEMPLATE=".github/release_template.md"
 VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
 
@@ -21,7 +22,7 @@ fail() {
 ensure_required_files_exist() {
   local file
 
-  for file in "$INFO_PLIST" "$PROJECT_FILE"; do
+  for file in "$INFO_PLIST" "$PROJECT_FILE" "$CHANGELOG_FILE"; do
     [[ -f "$file" ]] || fail "Required file is missing: $file"
   done
 }
@@ -62,6 +63,14 @@ project_setting_value() {
 render_release_body() {
   local version="$1"
   local tag="$2"
+  local changelog_body
+
+  changelog_body="$(render_changelog_release_body "$version")"
+
+  if [[ -n "$changelog_body" ]]; then
+    printf '%s\n' "$changelog_body"
+    return
+  fi
 
   if [[ -f "$RELEASE_TEMPLATE" ]]; then
     sed \
@@ -72,6 +81,33 @@ render_release_body() {
   fi
 
   printf 'Download %s %s from the assets below.\n' "$APP_NAME" "$version"
+}
+
+render_changelog_release_body() {
+  local version="$1"
+
+  VERSION="$version" CHANGELOG_PATH="$CHANGELOG_FILE" perl <<'PERL'
+use strict;
+use warnings;
+
+my $version = $ENV{VERSION};
+my $path = $ENV{CHANGELOG_PATH};
+
+open my $fh, '<', $path or die "Failed to open $path: $!";
+local $/;
+my $content = <$fh>;
+close $fh;
+
+if ($content =~ /^## \[\Q$version\E\] - [^\n]+\n(.*?)(?=^## \[|\z)/ms) {
+    my $body = $1;
+    $body =~ s/\A\s+//;
+    $body =~ s/\s+\z//;
+
+    if (length $body) {
+        print "## 更新内容\n\n$body\n";
+    }
+}
+PERL
 }
 
 write_github_output() {
