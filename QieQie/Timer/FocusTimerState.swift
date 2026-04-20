@@ -140,7 +140,7 @@ struct FocusTimerState: Equatable {
     }
 
     var canSkip: Bool {
-        status == .running || status == .paused
+        status == .running || status == .paused || (status == .idle && currentPhase != .focus)
     }
 
     func status(at now: Date) -> FocusTimerStatus {

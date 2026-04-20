@@ -336,6 +336,42 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertNil(manager.state.endTime)
     }
 
+    func testIdleBreakCanBeSkippedWithoutStartingBreakFirst() {
+        let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
+        let scheduler = RecordingTickerScheduler()
+        let defaults = makeUserDefaults()
+        defaults.set(false, forKey: "focusTimer.configuration.autoStartBreak")
+        defaults.set(false, forKey: "focusTimer.configuration.autoStartNextFocus")
+        let manager = FocusTimerManager(
+            clock: clock,
+            tickerScheduler: scheduler,
+            userDefaults: defaults
+        )
+
+        manager.startCurrentPhase()
+        clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
+        manager.processTimerTick()
+
+        XCTAssertEqual(manager.state.currentPhase, .shortBreak)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .idle)
+        XCTAssertTrue(manager.state.canSkip)
+
+        manager.skipCurrentPhase()
+
+        XCTAssertEqual(manager.state.currentPhase, .focus)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
+        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(25 * 60))
+        XCTAssertEqual(scheduler.scheduleCallCount, 2)
+    }
+
+    func testIdleFocusCannotBeSkipped() {
+        let manager = FocusTimerManager(userDefaults: makeUserDefaults())
+
+        XCTAssertEqual(manager.state.currentPhase, .focus)
+        XCTAssertEqual(manager.state.status, .idle)
+        XCTAssertFalse(manager.state.canSkip)
+    }
+
     func testSkipCurrentFocusImmediatelyDoesNotRecordZeroDuration() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
