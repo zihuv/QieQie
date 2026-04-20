@@ -8,11 +8,6 @@ final class FocusTimerManager: ObservableObject {
     @Published var selectedTagName: String?
     @Published private(set) var availableTags: [String]
 
-    private struct ActiveFocusMetadata {
-        let tagName: String?
-        let note: String
-    }
-
     private let engine = FocusTimerEngine()
     private let clock: FocusTimerClock
     private let tickerScheduler: FocusTimerTickerScheduling
@@ -20,7 +15,6 @@ final class FocusTimerManager: ObservableObject {
     private let focusCompletionRecorder: ((TimeInterval, Date) -> Void)?
 
     private var tickerTask: FocusTimerScheduledTask?
-    private var activeFocusMetadata: ActiveFocusMetadata?
 
     let focusHistoryManager: FocusHistoryManager?
 
@@ -146,13 +140,6 @@ final class FocusTimerManager: ObservableObject {
     func startCurrentPhase() {
         guard state.status(at: clock.now()) == .idle else { return }
 
-        if state.currentPhase == .focus {
-            activeFocusMetadata = ActiveFocusMetadata(
-                tagName: FocusTagCatalog.normalizeTagName(selectedTagName),
-                note: recordedNote
-            )
-        }
-
         stopTimer()
         publishState(engine.start(state, now: clock.now()))
         startTimer()
@@ -160,7 +147,6 @@ final class FocusTimerManager: ObservableObject {
 
     func resetCurrentPhase() {
         stopTimer()
-        activeFocusMetadata = nil
         publishState(engine.reset(state))
     }
 
@@ -235,24 +221,14 @@ final class FocusTimerManager: ObservableObject {
         if let duration = result.completedFocusDuration {
             focusHistoryManager?.recordCompletedFocus(
                 duration: duration,
-                tagName: activeFocusMetadata?.tagName,
-                note: activeFocusMetadata?.note ?? recordedNote,
+                tagName: FocusTagCatalog.normalizeTagName(selectedTagName),
+                note: recordedNote,
                 completedAt: date
             )
             focusCompletionRecorder?(duration, date)
-            activeFocusMetadata = nil
         }
 
         publishState(nextState)
-
-        if nextState.currentPhase == .focus, nextState.status(at: date) != .idle {
-            activeFocusMetadata = ActiveFocusMetadata(
-                tagName: FocusTagCatalog.normalizeTagName(selectedTagName),
-                note: recordedNote
-            )
-        } else if nextState.currentPhase != .focus {
-            activeFocusMetadata = nil
-        }
 
         if nextState.status(at: date) == .running {
             startTimer()

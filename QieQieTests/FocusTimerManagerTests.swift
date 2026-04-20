@@ -224,7 +224,7 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(recordedDurations, [TimeInterval(25 * 60)])
     }
 
-    func testProcessTimerTickRecordsTagAndNoteCapturedWhenFocusStarts() throws {
+    func testProcessTimerTickRecordsLatestTagAndNoteWhenFocusCompletes() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
         let historyManager = try makeHistoryManager()
@@ -246,9 +246,9 @@ final class FocusTimerManagerTests: XCTestCase {
 
         let sessions = historyManager.getAllSessions()
         XCTAssertEqual(sessions.count, 1)
-        XCTAssertEqual(sessions.first?.taskName, "设计评审")
-        XCTAssertEqual(sessions.first?.tagName, "开发")
-        XCTAssertEqual(sessions.first?.note, "设计评审")
+        XCTAssertEqual(sessions.first?.taskName, "整理邮件")
+        XCTAssertEqual(sessions.first?.tagName, "会议")
+        XCTAssertEqual(sessions.first?.note, "整理邮件")
     }
 
     func testProcessTimerTickRecordsCompletedFocusWithTimeRange() throws {
