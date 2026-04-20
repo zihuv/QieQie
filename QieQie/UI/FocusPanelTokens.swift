@@ -21,7 +21,7 @@ enum FocusPanelControl {
     static let fieldHeight: CGFloat = 34
     static let numericFieldWidth: CGFloat = 64
     static let unitLabelWidth: CGFloat = 24
-    static let pickerWidth: CGFloat = 104
+    static let pickerWidth: CGFloat = 90
     static let pickerPopoverWidth: CGFloat = 188
 }
 
