@@ -31,9 +31,11 @@ struct PopoverHeaderBar<Trailing: View>: View {
                         Text("返回")
                             .font(FocusPanelTypography.headerBackLabel)
                     }
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 2)
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+                .buttonStyle(.plain)
                 .applyAccessibilityIdentifier(backAccessibilityID)
             }
 

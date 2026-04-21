@@ -8,7 +8,7 @@ enum SettingsPopoverInitialPanel {
 
 enum SettingsPopoverLayout {
     static let mainSize = CGSize(width: 252, height: 284)
-    static let settingsSize = CGSize(width: 248, height: 320)
+    static let settingsSize = CGSize(width: 252, height: 290)
     static let statisticsSize = CGSize(width: 252, height: 320)
 }
 

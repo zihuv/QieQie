@@ -6,27 +6,20 @@ struct StatisticsOverviewView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
+            VStack(alignment: .leading, spacing: FocusPanelSpacing.xl) {
                 summarySection
                 recordsSection
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .padding(FocusPanelSpacing.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var summarySection: some View {
         FocusPanelSection(title: "概览") {
-            FocusPanelGroup(horizontalPadding: FocusPanelSpacing.sm, verticalPadding: FocusPanelSpacing.md) {
-                VStack(spacing: 0) {
-                    ForEach(Array(summaryMetrics.enumerated()), id: \.element.id) { index, metric in
-                        summaryMetricRow(metric)
-
-                        if index < summaryMetrics.count - 1 {
-                            FocusPanelDivider(leadingInset: FocusPanelSpacing.xl)
-                        }
-                    }
+            VStack(spacing: FocusPanelSpacing.xxs) {
+                ForEach(summaryMetrics) { metric in
+                    summaryMetricRow(metric)
                 }
             }
         }
@@ -35,22 +28,14 @@ struct StatisticsOverviewView: View {
     private var recordsSection: some View {
         FocusPanelSection(title: "专注记录") {
             if daySections.isEmpty {
-                FocusPanelGroup(horizontalPadding: FocusPanelSpacing.sm, verticalPadding: FocusPanelSpacing.sm) {
-                    Text("完成一次专注后显示最近记录")
-                        .font(FocusPanelTypography.supportingText)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-                }
+                Text("完成一次专注后显示最近记录")
+                    .font(FocusPanelTypography.supportingText)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
             } else {
-                FocusPanelGroup(horizontalPadding: FocusPanelSpacing.md, verticalPadding: FocusPanelSpacing.sm) {
-                    VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
-                        ForEach(Array(daySections.enumerated()), id: \.element.id) { index, section in
-                            daySection(section)
-
-                            if index < daySections.count - 1 {
-                                Divider()
-                            }
-                        }
+                VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
+                    ForEach(daySections) { section in
+                        daySection(section)
                     }
                 }
             }
@@ -93,12 +78,12 @@ struct StatisticsOverviewView: View {
                 .minimumScaleFactor(0.65)
                 .monospacedDigit()
         }
-        .padding(.horizontal, FocusPanelSpacing.sm)
-        .padding(.vertical, FocusPanelSpacing.sm)
+        .padding(.horizontal, FocusPanelSpacing.xxs)
+        .padding(.vertical, FocusPanelSpacing.xxs)
     }
 
     private func daySection(_ section: StatisticsOverviewDaySection) -> some View {
-        VStack(alignment: .leading, spacing: FocusPanelSpacing.sm) {
+        VStack(alignment: .leading, spacing: FocusPanelSpacing.xs) {
             Text(FocusDisplayFormatter.preciseDate(section.date))
                 .font(FocusPanelTypography.dateLabel)
                 .foregroundColor(.secondary)

@@ -3,20 +3,23 @@ import SwiftUI
 struct FocusPanelSection<Content: View>: View {
     let title: String
     let titleColor: Color
+    let contentSpacing: CGFloat
     private let content: () -> Content
 
     init(
         title: String,
         titleColor: Color = .secondary,
+        contentSpacing: CGFloat = FocusPanelSpacing.xs,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.title = title
         self.titleColor = titleColor
+        self.contentSpacing = contentSpacing
         self.content = content
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: FocusPanelSpacing.xs) {
+        VStack(alignment: .leading, spacing: contentSpacing) {
             Text(title)
                 .font(FocusPanelTypography.sectionTitle)
                 .foregroundColor(titleColor)
@@ -64,15 +67,18 @@ struct FocusPanelGroup<Content: View>: View {
 struct FocusPanelFormRow<Trailing: View>: View {
     let title: String
     let labelWidth: CGFloat
+    let verticalPadding: CGFloat
     private let trailing: () -> Trailing
 
     init(
         title: String,
         labelWidth: CGFloat,
+        verticalPadding: CGFloat = FocusPanelSpacing.xs,
         @ViewBuilder trailing: @escaping () -> Trailing
     ) {
         self.title = title
         self.labelWidth = labelWidth
+        self.verticalPadding = verticalPadding
         self.trailing = trailing
     }
 
@@ -91,7 +97,7 @@ struct FocusPanelFormRow<Trailing: View>: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, FocusPanelSpacing.sm)
-        .padding(.vertical, FocusPanelSpacing.xs)
+        .padding(.vertical, verticalPadding)
     }
 }
 

@@ -1,5 +1,19 @@
 import SwiftUI
 
+private enum SettingsPanelTypography {
+    static let sectionTitle = Font.system(size: 14, weight: .semibold)
+    static let rowLabel = Font.system(size: 13, weight: .medium)
+    static let suffixLabel = Font.system(size: 12, weight: .medium)
+}
+
+private enum SettingsPanelMetrics {
+    static let sectionSpacing: CGFloat = FocusPanelSpacing.md
+    static let sectionContentSpacing: CGFloat = 4
+    static let rowSpacing: CGFloat = 4
+    static let rowVerticalPadding: CGFloat = 4
+    static let inputHeight: CGFloat = 24
+}
+
 struct SettingsPopoverSettingsPanel: View {
     @Binding var focusMinutes: String
     @Binding var shortBreakMinutes: String
@@ -22,11 +36,13 @@ struct SettingsPopoverSettingsPanel: View {
                 backAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.backButton,
                 onBack: onBack
             )
+            .padding(.horizontal, FocusPanelChrome.compactPadding)
+            .padding(.top, FocusPanelSpacing.sm)
 
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: FocusPanelSpacing.md) {
+                VStack(alignment: .leading, spacing: SettingsPanelMetrics.sectionSpacing) {
                     settingsSection(title: "计时选项") {
-                        VStack(spacing: 0) {
+                        SettingsPopoverOptionList {
                             SettingsPopoverInputRow(
                                 title: "番茄时长",
                                 value: $focusMinutes,
@@ -34,8 +50,6 @@ struct SettingsPopoverSettingsPanel: View {
                                 accessibilityID: FocusTimerAccessibilityID.SettingsPopover.focusMinutesField,
                                 onCommit: onFocusDurationChange
                             )
-
-                            FocusPanelDivider()
 
                             SettingsPopoverInputRow(
                                 title: "短休息时长",
@@ -45,8 +59,6 @@ struct SettingsPopoverSettingsPanel: View {
                                 onCommit: onShortBreakDurationChange
                             )
 
-                            FocusPanelDivider()
-
                             SettingsPopoverInputRow(
                                 title: "长休息时长",
                                 value: $longBreakMinutes,
@@ -54,8 +66,6 @@ struct SettingsPopoverSettingsPanel: View {
                                 accessibilityID: FocusTimerAccessibilityID.SettingsPopover.longBreakMinutesField,
                                 onCommit: onLongBreakDurationChange
                             )
-
-                            FocusPanelDivider()
 
                             SettingsPopoverInputRow(
                                 title: "长休息间隔番茄数",
@@ -70,14 +80,12 @@ struct SettingsPopoverSettingsPanel: View {
                     }
 
                     settingsSection(title: "自动选项") {
-                        VStack(spacing: 0) {
+                        SettingsPopoverOptionList {
                             SettingsPopoverToggleRow(
                                 title: "自动开始下个番茄",
                                 isOn: autoStartNextFocusBinding,
                                 accessibilityID: FocusTimerAccessibilityID.SettingsPopover.autoStartNextFocusToggle
                             )
-
-                            FocusPanelDivider()
 
                             SettingsPopoverToggleRow(
                                 title: "自动开始休息",
@@ -87,10 +95,11 @@ struct SettingsPopoverSettingsPanel: View {
                         }
                     }
                 }
+                .padding(.horizontal, FocusPanelChrome.compactPadding)
+                .padding(.bottom, FocusPanelSpacing.xxs)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
-        .padding(FocusPanelSpacing.md)
         .frame(
             width: SettingsPopoverLayout.settingsSize.width,
             height: SettingsPopoverLayout.settingsSize.height,
@@ -122,11 +131,51 @@ struct SettingsPopoverSettingsPanel: View {
         title: String,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        FocusPanelSection(title: title) {
-            FocusPanelGroup {
-                content()
-            }
+        FocusPanelSection(title: title, contentSpacing: SettingsPanelMetrics.sectionContentSpacing) {
+            content()
         }
+        .font(SettingsPanelTypography.sectionTitle)
+    }
+}
+
+private struct SettingsPopoverOptionList<Content: View>: View {
+    private let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(spacing: SettingsPanelMetrics.rowSpacing) {
+            content()
+        }
+    }
+}
+
+private struct SettingsPopoverOptionRow<Accessory: View>: View {
+    let title: String
+    let labelWidth: CGFloat
+    private let accessory: () -> Accessory
+
+    init(
+        title: String,
+        labelWidth: CGFloat,
+        @ViewBuilder accessory: @escaping () -> Accessory
+    ) {
+        self.title = title
+        self.labelWidth = labelWidth
+        self.accessory = accessory
+    }
+
+    var body: some View {
+        FocusPanelFormRow(
+            title: title,
+            labelWidth: labelWidth,
+            verticalPadding: SettingsPanelMetrics.rowVerticalPadding
+        ) {
+            accessory()
+        }
+        .font(SettingsPanelTypography.rowLabel)
     }
 }
 
@@ -138,7 +187,7 @@ struct SettingsPopoverStatisticsPanel: View {
     let onOpenStatistics: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: FocusPanelSpacing.md) {
             PopoverHeaderBar(
                 title: "统计概览",
                 backAccessibilityID: FocusTimerAccessibilityID.SettingsPopover.backButton,
@@ -152,15 +201,13 @@ struct SettingsPopoverStatisticsPanel: View {
                 .disabled(!canOpenStatisticsDetail)
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsDetailButton)
             }
-            .padding(.horizontal, FocusPanelChrome.compactPadding)
-            .padding(.top, FocusPanelSpacing.md)
 
             StatisticsOverviewView(
                 statistics: dashboardStats,
                 recentSessions: Array(recentSessions.prefix(30))
             )
-            .padding(.top, FocusPanelSpacing.xxs)
         }
+        .padding(FocusPanelChrome.compactPadding)
         .frame(
             width: SettingsPopoverLayout.statisticsSize.width,
             height: SettingsPopoverLayout.statisticsSize.height,
@@ -197,13 +244,15 @@ private struct SettingsPopoverInputRow: View {
     }
 
     var body: some View {
-        FocusPanelFormRow(title: title, labelWidth: 82) {
+        SettingsPopoverOptionRow(title: title, labelWidth: 82) {
             HStack(spacing: FocusPanelSpacing.xs) {
                 TextField("", text: $value)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.mini)
-                    .frame(width: FocusPanelControl.numericFieldWidth)
+                    .textFieldStyle(.plain)
+                    .font(SettingsPanelTypography.rowLabel)
+                    .frame(width: FocusPanelControl.numericFieldWidth, height: SettingsPanelMetrics.inputHeight)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, FocusPanelSpacing.xs)
+                    .focusPanelFieldSurface(cornerRadius: FocusPanelCornerRadius.large)
                     .accessibilityIdentifier(accessibilityID)
                     .onChange(of: value) { _, newValue in
                         value = FocusTimerDurationParser.sanitizeNumericInput(
@@ -215,7 +264,7 @@ private struct SettingsPopoverInputRow: View {
                     }
 
                 Text(suffix)
-                    .font(FocusPanelTypography.supportingText)
+                    .font(SettingsPanelTypography.suffixLabel)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .frame(width: FocusPanelControl.unitLabelWidth, alignment: .leading)
@@ -230,7 +279,7 @@ private struct SettingsPopoverToggleRow: View {
     let accessibilityID: String
 
     var body: some View {
-        FocusPanelFormRow(title: title, labelWidth: 112) {
+        SettingsPopoverOptionRow(title: title, labelWidth: 112) {
             Toggle("", isOn: isOn)
                 .labelsHidden()
                 .toggleStyle(.switch)

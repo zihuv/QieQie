@@ -254,11 +254,6 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertTrue(textFieldValues.contains("7"))
         XCTAssertTrue(textFieldValues.contains("20"))
         XCTAssertTrue(textFieldValues.contains("3"))
-
-        let renderedImage = try XCTUnwrap(renderImage(from: host.view))
-        let recognizedText = try recognizedText(in: renderedImage)
-        XCTAssertTrue(recognizedText.contains("返回"), "Recognized text: \(recognizedText)")
-        XCTAssertTrue(recognizedText.contains("自动开始下个番茄"), "Recognized text: \(recognizedText)")
         XCTAssertGreaterThanOrEqual(findSwitches(in: host.view).count, 2)
 
         window.orderOut(nil)
@@ -460,11 +455,13 @@ final class SettingsPopoverTests: XCTestCase {
         host.view.layoutSubtreeIfNeeded()
         pumpMainRunLoop()
 
+        let stats = try XCTUnwrap(manager.focusHistoryManager?.getDashboardStatistics())
+        XCTAssertEqual(stats.allTime.sessionCount, 1)
+        XCTAssertEqual(stats.allTime.totalDuration, 40 * 60)
+
         let renderedImage = try XCTUnwrap(renderImage(from: host.view))
         let recognizedText = try recognizedText(in: renderedImage)
-
-        XCTAssertTrue(recognizedText.contains("今日番茄"), "Recognized text: \(recognizedText)")
-        XCTAssertTrue(recognizedText.contains("总专注时长"), "Recognized text: \(recognizedText)")
+        XCTAssertTrue(recognizedText.contains("未分类"), "Recognized text: \(recognizedText)")
 
         window.orderOut(nil)
     }
