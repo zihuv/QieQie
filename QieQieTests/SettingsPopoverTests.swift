@@ -466,7 +466,7 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    func testBreakCountdownUsesGreenStatusBarTint() {
+    func testBreakCountdownUsesGreenStatusBarTintWithAdaptiveHighlight() {
         XCTAssertNil(StatusBarManager.countdownTintColor(for: .focus))
         XCTAssertTrue(StatusBarManager.countdownTintColor(for: .shortBreak)?.isEqual(NSColor.systemGreen) == true)
         XCTAssertTrue(StatusBarManager.countdownTintColor(for: .longBreak)?.isEqual(NSColor.systemGreen) == true)
@@ -492,6 +492,7 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertEqual(button.title, "25:00")
         XCTAssertNil(button.contentTintColor)
         XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+        XCTAssertNil(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
     func testInitialIdleFocusKeepsClockIconInStatusBar() throws {
@@ -531,10 +532,11 @@ final class SettingsPopoverTests: XCTestCase {
         pumpMainRunLoop()
 
         let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
-        XCTAssertEqual(button.imagePosition, .imageOnly)
-        let image = try XCTUnwrap(button.image)
-        XCTAssertFalse(image.isTemplate)
-        XCTAssertGreaterThan(image.size.width, image.size.height * 2)
+        XCTAssertEqual(button.title, "25:00")
+        XCTAssertNil(button.image)
+        XCTAssertEqual(button.imagePosition, .noImage)
+        XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+        XCTAssertNil(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
     func testIdleBreakShowsPendingBreakCountdownInStatusBar() throws {
@@ -553,12 +555,17 @@ final class SettingsPopoverTests: XCTestCase {
         pumpMainRunLoop()
 
         let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
-        XCTAssertNotNil(button.image)
-        let renderedImage = try XCTUnwrap(renderImage(from: button))
-        XCTAssertTrue(imageContainsGreenPixels(renderedImage))
+        XCTAssertEqual(button.title, "05:00")
+        XCTAssertNil(button.image)
+        XCTAssertEqual(button.imagePosition, .noImage)
+        XCTAssertNil(button.contentTintColor)
+        let textColor = try XCTUnwrap(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
+        let highlightedTextColor = try XCTUnwrap(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
+        XCTAssertTrue(textColor.isEqual(NSColor.systemGreen))
+        XCTAssertTrue(highlightedTextColor.isEqual(NSColor.selectedMenuItemTextColor))
     }
 
-    func testRunningBreakUsesGreenForegroundColorInStatusBar() throws {
+    func testRunningBreakUsesAdaptiveForegroundColorInStatusBar() throws {
         let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
         let statusBarManager = StatusBarManager(focusTimerManager: manager)
         let now = Date()
@@ -575,9 +582,14 @@ final class SettingsPopoverTests: XCTestCase {
         pumpMainRunLoop()
 
         let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
-        XCTAssertNotNil(button.image)
-        let renderedImage = try XCTUnwrap(renderImage(from: button))
-        XCTAssertTrue(imageContainsGreenPixels(renderedImage))
+        XCTAssertEqual(button.title, "05:00")
+        XCTAssertNil(button.image)
+        XCTAssertEqual(button.imagePosition, .noImage)
+        XCTAssertNil(button.contentTintColor)
+        let textColor = try XCTUnwrap(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
+        let highlightedTextColor = try XCTUnwrap(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
+        XCTAssertTrue(textColor.isEqual(NSColor.systemGreen))
+        XCTAssertTrue(highlightedTextColor.isEqual(NSColor.selectedMenuItemTextColor))
     }
 
     func testPopoverLayoutUsesUpdatedMainPanelAndLargerStatisticsWindow() {
@@ -831,28 +843,6 @@ final class SettingsPopoverTests: XCTestCase {
 
         view.cacheDisplay(in: bounds, to: representation)
         return representation.cgImage
-    }
-
-    private func imageContainsGreenPixels(_ image: CGImage) -> Bool {
-        guard let dataProvider = image.dataProvider, let data = dataProvider.data else {
-            return false
-        }
-
-        let bytes = CFDataGetBytePtr(data)
-        let length = CFDataGetLength(data)
-
-        for index in stride(from: 0, to: length, by: 4) {
-            let red = Int(bytes![index])
-            let green = Int(bytes![index + 1])
-            let blue = Int(bytes![index + 2])
-            let alpha = Int(bytes![index + 3])
-
-            if alpha > 0, green > 80, green > red + 30, green > blue + 20 {
-                return true
-            }
-        }
-
-        return false
     }
 
     private func recognizedText(in image: CGImage) throws -> String {
