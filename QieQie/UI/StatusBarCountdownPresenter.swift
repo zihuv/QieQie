@@ -2,21 +2,9 @@ import AppKit
 
 enum StatusBarCountdownStyle {
     static func countdownTintColor(for phase: FocusTimerPhase) -> NSColor? {
-        switch phase {
-        case .focus:
-            return nil
-        case .shortBreak, .longBreak:
-            return .systemGreen
-        }
-    }
-
-    static func highlightedCountdownTintColor(for phase: FocusTimerPhase) -> NSColor? {
-        switch phase {
-        case .focus:
-            return nil
-        case .shortBreak, .longBreak:
-            return .selectedMenuItemTextColor
-        }
+        // Fixed colors are copied to inactive menu bars on multi-display setups.
+        // Leave status item text color to AppKit so each menu bar stays readable.
+        nil
     }
 }
 
@@ -86,20 +74,14 @@ final class StatusBarCountdownPresenter {
 
     private func setButtonTitle(_ title: String, on button: NSStatusBarButton, state: FocusTimerState) {
         let textColor = StatusBarCountdownStyle.countdownTintColor(for: state.currentPhase)
-        var attributes: [NSAttributedString.Key: Any] = [.font: titleFont]
-        if let textColor {
-            attributes[.foregroundColor] = textColor
-        }
         button.title = title
         button.attributedTitle = NSAttributedString(
             string: title,
-            attributes: attributes
+            attributes: titleAttributes(foregroundColor: textColor)
         )
         button.attributedAlternateTitle = NSAttributedString(
             string: title,
-            attributes: titleAttributes(
-                foregroundColor: StatusBarCountdownStyle.highlightedCountdownTintColor(for: state.currentPhase)
-            )
+            attributes: titleAttributes(foregroundColor: nil)
         )
         button.contentTintColor = nil
     }

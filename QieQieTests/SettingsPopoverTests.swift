@@ -466,10 +466,10 @@ final class SettingsPopoverTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    func testBreakCountdownUsesGreenStatusBarTintWithAdaptiveHighlight() {
+    func testStatusBarCountdownUsesSystemAdaptiveTextColor() {
         XCTAssertNil(StatusBarManager.countdownTintColor(for: .focus))
-        XCTAssertTrue(StatusBarManager.countdownTintColor(for: .shortBreak)?.isEqual(NSColor.systemGreen) == true)
-        XCTAssertTrue(StatusBarManager.countdownTintColor(for: .longBreak)?.isEqual(NSColor.systemGreen) == true)
+        XCTAssertNil(StatusBarManager.countdownTintColor(for: .shortBreak))
+        XCTAssertNil(StatusBarManager.countdownTintColor(for: .longBreak))
     }
 
     func testStatusBarCountdownDoesNotPinForegroundColor() throws {
@@ -559,10 +559,8 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertNil(button.image)
         XCTAssertEqual(button.imagePosition, .noImage)
         XCTAssertNil(button.contentTintColor)
-        let textColor = try XCTUnwrap(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
-        let highlightedTextColor = try XCTUnwrap(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
-        XCTAssertTrue(textColor.isEqual(NSColor.systemGreen))
-        XCTAssertTrue(highlightedTextColor.isEqual(NSColor.selectedMenuItemTextColor))
+        XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+        XCTAssertNil(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
     func testRunningBreakUsesAdaptiveForegroundColorInStatusBar() throws {
@@ -586,10 +584,8 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertNil(button.image)
         XCTAssertEqual(button.imagePosition, .noImage)
         XCTAssertNil(button.contentTintColor)
-        let textColor = try XCTUnwrap(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
-        let highlightedTextColor = try XCTUnwrap(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor)
-        XCTAssertTrue(textColor.isEqual(NSColor.systemGreen))
-        XCTAssertTrue(highlightedTextColor.isEqual(NSColor.selectedMenuItemTextColor))
+        XCTAssertNil(button.attributedTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
+        XCTAssertNil(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
     func testPopoverLayoutUsesUpdatedMainPanelAndLargerStatisticsWindow() {
