@@ -132,7 +132,12 @@ struct SettingsPopoverSettingsPanel: View {
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         FocusPanelSection(title: title, contentSpacing: SettingsPanelMetrics.sectionContentSpacing) {
-            content()
+            FocusPanelGroup(
+                horizontalPadding: 0,
+                verticalPadding: FocusPanelSpacing.xs
+            ) {
+                content()
+            }
         }
         .font(SettingsPanelTypography.sectionTitle)
     }
@@ -194,11 +199,13 @@ struct SettingsPopoverStatisticsPanel: View {
                 onBack: onBack
             ) {
                 Button(action: onOpenStatistics) {
-                    Text("统计")
-                        .font(FocusPanelTypography.supportingText)
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(FocusPanelTypography.controlIcon)
                 }
                 .buttonStyle(.plain)
+                .help("打开完整统计")
                 .disabled(!canOpenStatisticsDetail)
+                .accessibilityLabel("打开完整统计")
                 .accessibilityIdentifier(FocusTimerAccessibilityID.SettingsPopover.statisticsDetailButton)
             }
 
