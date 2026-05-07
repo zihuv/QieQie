@@ -267,7 +267,15 @@ final class FocusTimerManager: ObservableObject {
         shouldPreservePause: Bool
     ) -> FocusTimerState {
         guard shouldPreservePause else { return state }
-        return engine.pause(state, now: date) ?? state
+        return FocusTimerState(
+            configuration: state.configuration,
+            currentPhase: state.currentPhase,
+            cycleFocusCount: state.cycleFocusCount,
+            phaseDuration: state.phaseDuration,
+            endTime: date.addingTimeInterval(state.phaseDuration),
+            isPaused: true,
+            pausedAt: date
+        )
     }
 
     private var recordedNote: String {

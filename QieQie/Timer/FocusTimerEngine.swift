@@ -203,7 +203,7 @@ struct FocusTimerEngine {
         configuration: FocusTimerConfiguration,
         trigger: FocusTimerAdvanceTrigger
     ) -> Bool {
-        trigger == .skipped || configuration.shouldAutoStartNextPhase(after: phase)
+        configuration.shouldAutoStartNextPhase(after: phase)
     }
 
     private func recordedFocusDuration(

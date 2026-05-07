@@ -336,7 +336,7 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertNil(manager.state.endTime)
     }
 
-    func testIdleBreakCanBeSkippedWithoutStartingBreakFirst() {
+    func testIdleBreakCanBeSkippedWithoutStartingBreakFirstAndRespectsAutoNextFocusSetting() {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
         let defaults = makeUserDefaults()
@@ -359,9 +359,9 @@ final class FocusTimerManagerTests: XCTestCase {
         manager.skipCurrentPhase()
 
         XCTAssertEqual(manager.state.currentPhase, .focus)
-        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
-        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(25 * 60))
-        XCTAssertEqual(scheduler.scheduleCallCount, 2)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .idle)
+        XCTAssertNil(manager.state.endTime)
+        XCTAssertEqual(scheduler.scheduleCallCount, 1)
     }
 
     func testIdleFocusCannotBeSkipped() {
@@ -393,7 +393,8 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(runningTask.cancelCallCount, 1)
         XCTAssertEqual(manager.state.currentPhase, .shortBreak)
         XCTAssertEqual(manager.state.cycleFocusCount, 1)
-        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .idle)
+        XCTAssertNil(manager.state.endTime)
         XCTAssertEqual(recordedDurations, [])
     }
 
@@ -424,7 +425,7 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(session.startTime, clock.now().addingTimeInterval(-123))
     }
 
-    func testSkipCurrentFocusStartsBreakImmediatelyWhenAutoBreakIsDisabled() throws {
+    func testSkipCurrentFocusLeavesBreakIdleWhenAutoBreakIsDisabled() throws {
         let clock = ManualClock(now: Date(timeIntervalSinceReferenceDate: 100))
         let scheduler = RecordingTickerScheduler()
         let defaults = makeUserDefaults()
@@ -443,9 +444,9 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(runningTask.cancelCallCount, 1)
         XCTAssertEqual(manager.state.currentPhase, .shortBreak)
         XCTAssertEqual(manager.state.cycleFocusCount, 1)
-        XCTAssertEqual(manager.state.status(at: clock.now()), .running)
-        XCTAssertEqual(manager.state.endTime, clock.now().addingTimeInterval(5 * 60))
-        XCTAssertEqual(scheduler.scheduleCallCount, 2)
+        XCTAssertEqual(manager.state.status(at: clock.now()), .idle)
+        XCTAssertNil(manager.state.endTime)
+        XCTAssertEqual(scheduler.scheduleCallCount, 1)
     }
 
     func testSkipCurrentFocusEntersLongBreakAtConfiguredBoundary() throws {

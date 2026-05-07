@@ -115,7 +115,7 @@ final class FocusTimerEngineTests: XCTestCase {
         XCTAssertEqual(result.state.status(at: now), .running)
     }
 
-    func testAdvanceFromSkippedFocusStartsBreakEvenWhenAutoBreakIsDisabled() {
+    func testAdvanceFromSkippedFocusLeavesBreakIdleWhenAutoBreakIsDisabled() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let runningFocus = FocusTimerState(
             configuration: FocusTimerConfiguration(autoStartBreak: false),
@@ -133,8 +133,8 @@ final class FocusTimerEngineTests: XCTestCase {
         XCTAssertEqual(result.state.currentPhase, .shortBreak)
         XCTAssertEqual(result.state.cycleFocusCount, 3)
         XCTAssertEqual(result.state.phaseDuration, 5 * 60)
-        XCTAssertEqual(result.state.endTime, now.addingTimeInterval(5 * 60))
-        XCTAssertEqual(result.state.status(at: now), .running)
+        XCTAssertNil(result.state.endTime)
+        XCTAssertEqual(result.state.status(at: now), .idle)
     }
 
     func testAdvanceFromSkippedFocusEntersLongBreakAtCycleBoundary() {
@@ -255,7 +255,7 @@ final class FocusTimerEngineTests: XCTestCase {
         XCTAssertNil(result.state.endTime)
     }
 
-    func testAdvanceFromSkippedBreakStartsNextFocusEvenWhenAutoNextFocusIsDisabled() {
+    func testAdvanceFromSkippedBreakLeavesNextFocusIdleWhenAutoNextFocusIsDisabled() {
         let now = Date(timeIntervalSinceReferenceDate: 100)
         let runningBreak = FocusTimerState(
             configuration: FocusTimerConfiguration(autoStartNextFocus: false),
@@ -272,8 +272,8 @@ final class FocusTimerEngineTests: XCTestCase {
         XCTAssertEqual(result.state.currentPhase, .focus)
         XCTAssertEqual(result.state.cycleFocusCount, 2)
         XCTAssertEqual(result.state.phaseDuration, 25 * 60)
-        XCTAssertEqual(result.state.endTime, now.addingTimeInterval(25 * 60))
-        XCTAssertEqual(result.state.status(at: now), .running)
+        XCTAssertNil(result.state.endTime)
+        XCTAssertEqual(result.state.status(at: now), .idle)
     }
 
     func testApplyConfigurationUpdatesIdlePhaseDurationAndClampsInterval() {
