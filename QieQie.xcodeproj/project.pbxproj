@@ -45,6 +45,7 @@
 		E1077 /* HistoryTrendSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1076; };
 		E1079 /* FocusTimerScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1078; };
 		E1081 /* FocusTimerStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1080; };
+		E1083 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E2002; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -98,6 +99,7 @@
 		E1080 /* FocusTimerStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusTimerStorage.swift; sourceTree = "<group>"; };
 		E2000 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E2001 /* QieQie.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QieQie.entitlements; sourceTree = "<group>"; };
+		E2002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E9000 /* QieQie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QieQie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9003 /* QieQieTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QieQieTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -139,6 +141,7 @@
 				E5005 /* Timer */,
 				E5006 /* History */,
 				E5007 /* UI */,
+				E5009 /* Assets */,
 				E5008 /* Support */,
 			);
 			path = QieQie;
@@ -211,6 +214,14 @@
 				E2001,
 			);
 			path = Support;
+			sourceTree = "<group>";
+		};
+		E5009 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				E2002 /* Assets.xcassets */,
+			);
+			path = Assets;
 			sourceTree = "<group>";
 		};
 		E5002 /* QieQieTests */ = {
@@ -305,6 +316,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E1083 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

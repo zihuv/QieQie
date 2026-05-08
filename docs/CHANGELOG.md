@@ -9,6 +9,7 @@
 ### Added
 
 ### Changed
+- 更新应用图标为简约番茄造型，更贴合专注计时主题。
 
 ### Deprecated
 
