@@ -27,7 +27,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             modelContainer = try ModelContainer(for: FocusSession.self, FocusTagRecord.self)
             focusHistoryManager = modelContainer.map(FocusHistoryManager.init(modelContainer:))
-            focusHistoryManager?.migrateStorage(using: .standard)
         } catch {
             focusHistoryManager = nil
             logger.error("Failed to create ModelContainer: \(error.localizedDescription, privacy: .public)")

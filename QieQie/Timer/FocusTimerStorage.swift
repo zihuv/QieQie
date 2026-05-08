@@ -8,10 +8,8 @@ enum FocusTimerStorage {
         static let longBreakInterval = "focusTimer.configuration.longBreakInterval"
         static let autoStartBreak = "focusTimer.configuration.autoStartBreak"
         static let autoStartNextFocus = "focusTimer.configuration.autoStartNextFocus"
-        static let autoAdvance = "focusTimer.configuration.autoAdvance"
         static let currentTaskName = "focusTimer.currentTaskName"
         static let selectedTagName = "focusTimer.selectedTagName"
-        static let legacyAvailableTags = "focusTimer.availableTags"
     }
 
     static func persist(
@@ -24,7 +22,6 @@ enum FocusTimerStorage {
         userDefaults.set(configuration.longBreakInterval, forKey: Key.longBreakInterval)
         userDefaults.set(configuration.autoStartBreak, forKey: Key.autoStartBreak)
         userDefaults.set(configuration.autoStartNextFocus, forKey: Key.autoStartNextFocus)
-        userDefaults.removeObject(forKey: Key.autoAdvance)
     }
 
     static func persist(currentTaskName: String, in userDefaults: UserDefaults) {
@@ -39,22 +36,15 @@ enum FocusTimerStorage {
         }
     }
 
-    static func persistLegacyAvailableTags(_ availableTags: [String], in userDefaults: UserDefaults) {
-        userDefaults.set(availableTags, forKey: Key.legacyAvailableTags)
-    }
-
     static func loadConfiguration(from userDefaults: UserDefaults) -> FocusTimerConfiguration {
         let defaults = FocusTimerConfiguration.default
         let focusDuration = userDefaults.object(forKey: Key.focusDuration) as? Double ?? defaults.focusDuration
         let shortBreakDuration = userDefaults.object(forKey: Key.shortBreakDuration) as? Double ?? defaults.shortBreakDuration
         let longBreakDuration = userDefaults.object(forKey: Key.longBreakDuration) as? Double ?? defaults.longBreakDuration
         let longBreakInterval = userDefaults.object(forKey: Key.longBreakInterval) as? Int ?? defaults.longBreakInterval
-        let legacyAutoAdvance = userDefaults.object(forKey: Key.autoAdvance) as? Bool
         let autoStartBreak = userDefaults.object(forKey: Key.autoStartBreak) as? Bool
-            ?? legacyAutoAdvance
             ?? defaults.autoStartBreak
         let autoStartNextFocus = userDefaults.object(forKey: Key.autoStartNextFocus) as? Bool
-            ?? legacyAutoAdvance
             ?? defaults.autoStartNextFocus
 
         return FocusTimerConfiguration(
@@ -73,15 +63,6 @@ enum FocusTimerStorage {
 
     static func loadSelectedTagName(from userDefaults: UserDefaults) -> String? {
         FocusTagCatalog.normalizeTagName(userDefaults.string(forKey: Key.selectedTagName))
-    }
-
-    static func loadLegacyAvailableTags(from userDefaults: UserDefaults) -> [String] {
-        let storedTags = userDefaults.stringArray(forKey: Key.legacyAvailableTags) ?? FocusTagCatalog.defaultTags
-        return FocusTagCatalog.normalizedTags(from: storedTags)
-    }
-
-    static func clearLegacyAvailableTags(in userDefaults: UserDefaults) {
-        userDefaults.removeObject(forKey: Key.legacyAvailableTags)
     }
 
     static func normalizeTaskNameInput(_ taskName: String) -> String {

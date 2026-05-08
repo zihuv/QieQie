@@ -118,21 +118,7 @@ extension FocusSession {
     }
 
     var normalizedNote: String {
-        let noteText = FocusTagCatalog.sanitize(note)
-        if !noteText.isEmpty {
-            return noteText
-        }
-
-        let legacyTaskName = FocusTagCatalog.sanitize(taskName)
-        if legacyTaskName.isEmpty || legacyTaskName == "专注" {
-            return ""
-        }
-
-        if let normalizedTagName, legacyTaskName == normalizedTagName {
-            return ""
-        }
-
-        return legacyTaskName
+        FocusTagCatalog.sanitize(note)
     }
 
     var displayTagName: String {

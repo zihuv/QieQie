@@ -59,70 +59,59 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(secondManager.currentTaskName, "写周报")
     }
 
-    func testSelectedTagPersistsAcrossManagerInstances() {
+    func testSelectedTagPersistsAcrossManagerInstances() throws {
         let defaults = makeUserDefaults()
-        let firstManager = FocusTimerManager(userDefaults: defaults)
+        let historyManager = try makeHistoryManager()
+        let firstManager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
 
-        firstManager.updateSelectedTagName("开发")
+        firstManager.addTag("开发")
 
-        let secondManager = FocusTimerManager(userDefaults: defaults)
+        let secondManager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
 
         XCTAssertEqual(secondManager.selectedTagName, "开发")
     }
 
-    func testAddTagPersistsAcrossManagerInstances() {
+    func testAddTagPersistsAcrossManagerInstances() throws {
         let defaults = makeUserDefaults()
-        let firstManager = FocusTimerManager(userDefaults: defaults)
+        let historyManager = try makeHistoryManager()
+        let firstManager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
 
         firstManager.addTag("毕设")
 
-        let secondManager = FocusTimerManager(userDefaults: defaults)
+        let secondManager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
 
         XCTAssertTrue(secondManager.availableTags.contains("毕设"))
         XCTAssertEqual(secondManager.selectedTagName, "毕设")
     }
 
-    func testMigrationMovesLegacyAvailableTagsIntoSwiftDataCatalog() throws {
+    func testManagerWithoutHistoryDoesNotRestoreTags() throws {
         let defaults = makeUserDefaults()
-        FocusTimerStorage.persistLegacyAvailableTags(["开发", "学习"], in: defaults)
-        FocusTimerStorage.persist(selectedTagName: "会议", in: defaults)
-
         let historyManager = try makeHistoryManager()
-        historyManager.migrateStorage(using: defaults)
-
-        let manager = FocusTimerManager(
+        let firstManager = FocusTimerManager(
             focusHistoryManager: historyManager,
             userDefaults: defaults
         )
 
-        XCTAssertEqual(manager.availableTags, ["开发", "学习", "会议"])
-        XCTAssertEqual(FocusTimerStorage.loadLegacyAvailableTags(from: defaults), [])
-    }
+        firstManager.addTag("开发")
+        firstManager.addTag("学习")
+        firstManager.updateSelectedTagName("学习")
 
-    func testMigrationNormalizesLegacyHistorySessionsWithoutLosingNote() throws {
-        let defaults = makeUserDefaults()
-        let container = try makeHistoryContainer()
-        let historyManager = FocusHistoryManager(modelContainer: container)
-        let completedAt = Date(timeIntervalSinceReferenceDate: 400)
-        let legacySession = FocusSession(
-            taskName: "写周报",
-            tagName: " 开发 ",
-            note: nil,
-            startTime: completedAt.addingTimeInterval(-(25 * 60)),
-            endTime: completedAt,
-            duration: 25 * 60,
-            isCompleted: true
-        )
-        container.mainContext.insert(legacySession)
-        try container.mainContext.save()
+        let managerWithoutHistory = FocusTimerManager(userDefaults: defaults)
 
-        historyManager.migrateStorage(using: defaults)
-
-        let migratedSession = try XCTUnwrap(historyManager.getAllSessions().first)
-        XCTAssertEqual(migratedSession.tagName, "开发")
-        XCTAssertEqual(migratedSession.note, "写周报")
-        XCTAssertEqual(migratedSession.taskName, "写周报")
-        XCTAssertEqual(historyManager.getAvailableTags(), ["开发"])
+        XCTAssertTrue(managerWithoutHistory.availableTags.isEmpty)
+        XCTAssertNil(managerWithoutHistory.selectedTagName)
     }
 
     func testRenameTagUpdatesSelectionAvailableTagsAndHistorySessions() throws {
@@ -278,10 +267,10 @@ final class FocusTimerManagerTests: XCTestCase {
             userDefaults: makeUserDefaults()
         )
 
-        manager.updateSelectedTagName("开发")
+        manager.addTag("开发")
         manager.updateCurrentTaskName("设计评审")
         manager.startCurrentPhase()
-        manager.updateSelectedTagName("会议")
+        manager.addTag("会议")
         manager.updateCurrentTaskName("整理邮件")
 
         clock.currentDate = clock.currentDate.addingTimeInterval(25 * 60 + 1)
@@ -569,16 +558,6 @@ final class FocusTimerManagerTests: XCTestCase {
         XCTAssertEqual(manager.state.status(at: clock.now()), .running)
         XCTAssertEqual(manager.state.endTime, Date(timeIntervalSinceReferenceDate: 1605))
         XCTAssertEqual(scheduler.scheduleCallCount, 2)
-    }
-
-    func testLegacyAutoAdvanceMigratesToBothAutoStartSettings() {
-        let defaults = makeUserDefaults()
-        defaults.set(false, forKey: "focusTimer.configuration.autoAdvance")
-
-        let manager = FocusTimerManager(userDefaults: defaults)
-
-        XCTAssertFalse(manager.configuration.autoStartBreak)
-        XCTAssertFalse(manager.configuration.autoStartNextFocus)
     }
 
     private func makeUserDefaults() -> UserDefaults {

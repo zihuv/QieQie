@@ -80,8 +80,18 @@ final class SettingsPopoverTests: XCTestCase {
 
     func testMainPanelShowsTagSelectorAndNoteField() throws {
         let defaults = UserDefaults(suiteName: UUID().uuidString)!
-        let manager = FocusTimerManager(userDefaults: defaults)
-        manager.updateSelectedTagName("开发")
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(
+            for: FocusSession.self,
+            FocusTagRecord.self,
+            configurations: configuration
+        )
+        let historyManager = FocusHistoryManager(modelContainer: container)
+        let manager = FocusTimerManager(
+            focusHistoryManager: historyManager,
+            userDefaults: defaults
+        )
+        manager.addTag("开发")
         manager.updateCurrentTaskName("整理需求")
         let host = NSHostingController(
             rootView: SettingsPopover(focusTimerManager: manager)

@@ -73,14 +73,14 @@ struct FocusTimerConfiguration: Equatable {
 
     func normalized() -> FocusTimerConfiguration {
         FocusTimerConfiguration(
-            focusDuration: Self.normalizedDuration(focusDuration, fallback: Self.default.focusDuration),
+            focusDuration: Self.normalizedDuration(focusDuration, defaultValue: Self.default.focusDuration),
             shortBreakDuration: Self.normalizedDuration(
                 shortBreakDuration,
-                fallback: Self.default.shortBreakDuration
+                defaultValue: Self.default.shortBreakDuration
             ),
             longBreakDuration: Self.normalizedDuration(
                 longBreakDuration,
-                fallback: Self.default.longBreakDuration
+                defaultValue: Self.default.longBreakDuration
             ),
             longBreakInterval: min(max(longBreakInterval, 1), 10),
             autoStartBreak: autoStartBreak,
@@ -108,9 +108,9 @@ struct FocusTimerConfiguration: Equatable {
         }
     }
 
-    private static func normalizedDuration(_ value: TimeInterval, fallback: TimeInterval) -> TimeInterval {
+    private static func normalizedDuration(_ value: TimeInterval, defaultValue: TimeInterval) -> TimeInterval {
         let rounded = max(60, value.rounded(.down))
-        return rounded.isFinite ? rounded : fallback
+        return rounded.isFinite ? rounded : defaultValue
     }
 }
 
