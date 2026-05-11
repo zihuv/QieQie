@@ -122,6 +122,7 @@ struct FocusTimerState: Equatable {
     var endTime: Date?
     var isPaused: Bool = false
     var pausedAt: Date?
+    var hasStartedTimerFlow: Bool = false
 
     var status: FocusTimerStatus {
         status(at: Date())
@@ -171,7 +172,8 @@ struct FocusTimerState: Equatable {
             phaseDuration: phaseDuration,
             endTime: endTime,
             isPaused: isPaused,
-            pausedAt: pausedAt
+            pausedAt: pausedAt,
+            hasStartedTimerFlow: hasStartedTimerFlow
         )
     }
 }

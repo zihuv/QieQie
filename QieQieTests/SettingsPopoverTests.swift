@@ -549,6 +549,29 @@ final class SettingsPopoverTests: XCTestCase {
         XCTAssertNil(button.attributedAlternateTitle.attribute(.foregroundColor, at: 0, effectiveRange: nil))
     }
 
+    func testIdleFocusAfterLongBreakSkipShowsPendingFocusCountdownInStatusBar() throws {
+        let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let statusBarManager = StatusBarManager(focusTimerManager: manager)
+        let now = Date()
+
+        manager.state = FocusTimerState(
+            configuration: FocusTimerConfiguration(autoStartNextFocus: false),
+            currentPhase: .longBreak,
+            cycleFocusCount: 4,
+            phaseDuration: 15 * 60,
+            endTime: now.addingTimeInterval(15 * 60),
+            isPaused: false,
+            pausedAt: nil
+        )
+        manager.skipCurrentPhase()
+        pumpMainRunLoop()
+
+        let button = try XCTUnwrap(statusBarButton(from: statusBarManager))
+        XCTAssertEqual(button.title, "25:00")
+        XCTAssertNil(button.image)
+        XCTAssertEqual(button.imagePosition, .noImage)
+    }
+
     func testIdleBreakShowsPendingBreakCountdownInStatusBar() throws {
         let manager = FocusTimerManager(userDefaults: UserDefaults(suiteName: UUID().uuidString)!)
         let statusBarManager = StatusBarManager(focusTimerManager: manager)

@@ -271,7 +271,8 @@ final class FocusTimerManager: ObservableObject {
             phaseDuration: state.phaseDuration,
             endTime: date.addingTimeInterval(state.phaseDuration),
             isPaused: true,
-            pausedAt: date
+            pausedAt: date,
+            hasStartedTimerFlow: state.hasStartedTimerFlow
         )
     }
 

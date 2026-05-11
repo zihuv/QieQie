@@ -116,7 +116,7 @@ final class StatusBarCountdownPresenter {
     }
 
     private func shouldShowIdleClockIcon(for state: FocusTimerState) -> Bool {
-        state.currentPhase == .focus && state.cycleFocusCount == 0
+        state.currentPhase == .focus && state.cycleFocusCount == 0 && !state.hasStartedTimerFlow
     }
 
     private func reservedTitleWidth(for state: FocusTimerState) -> CGFloat {

@@ -22,6 +22,7 @@ struct FocusTimerEngine {
             cycleFocusCount: 0,
             configuration: configuration.normalized(),
             shouldAutoStart: false,
+            hasStartedTimerFlow: false,
             now: Date()
         )
     }
@@ -44,7 +45,8 @@ struct FocusTimerEngine {
             phaseDuration: phaseDuration,
             endTime: state.endTime,
             isPaused: state.isPaused,
-            pausedAt: state.pausedAt
+            pausedAt: state.pausedAt,
+            hasStartedTimerFlow: state.hasStartedTimerFlow
         )
     }
 
@@ -56,7 +58,8 @@ struct FocusTimerEngine {
             phaseDuration: state.phaseDuration,
             endTime: now.addingTimeInterval(state.phaseDuration),
             isPaused: false,
-            pausedAt: nil
+            pausedAt: nil,
+            hasStartedTimerFlow: true
         )
     }
 
@@ -66,6 +69,7 @@ struct FocusTimerEngine {
             cycleFocusCount: state.cycleFocusCount,
             configuration: state.configuration,
             shouldAutoStart: false,
+            hasStartedTimerFlow: state.hasStartedTimerFlow,
             now: Date()
         )
     }
@@ -84,7 +88,8 @@ struct FocusTimerEngine {
             phaseDuration: state.phaseDuration,
             endTime: now.addingTimeInterval(currentRemaining),
             isPaused: true,
-            pausedAt: now
+            pausedAt: now,
+            hasStartedTimerFlow: state.hasStartedTimerFlow
         )
     }
 
@@ -103,7 +108,8 @@ struct FocusTimerEngine {
             phaseDuration: state.phaseDuration,
             endTime: endTime.addingTimeInterval(pauseDuration),
             isPaused: false,
-            pausedAt: nil
+            pausedAt: nil,
+            hasStartedTimerFlow: state.hasStartedTimerFlow
         )
 
         return FocusTimerResumeResult(state: resumedState, pauseDuration: pauseDuration)
@@ -142,6 +148,7 @@ struct FocusTimerEngine {
                         configuration: state.configuration,
                         trigger: trigger
                     ),
+                    hasStartedTimerFlow: true,
                     now: now
                 ),
                 recordedFocusDuration: recordedFocusDuration
@@ -157,6 +164,7 @@ struct FocusTimerEngine {
                         configuration: state.configuration,
                         trigger: trigger
                     ),
+                    hasStartedTimerFlow: true,
                     now: now
                 ),
                 recordedFocusDuration: nil
@@ -172,6 +180,7 @@ struct FocusTimerEngine {
                         configuration: state.configuration,
                         trigger: trigger
                     ),
+                    hasStartedTimerFlow: true,
                     now: now
                 ),
                 recordedFocusDuration: nil
@@ -184,6 +193,7 @@ struct FocusTimerEngine {
         cycleFocusCount: Int,
         configuration: FocusTimerConfiguration,
         shouldAutoStart: Bool,
+        hasStartedTimerFlow: Bool,
         now: Date
     ) -> FocusTimerState {
         let duration = configuration.duration(for: phase)
@@ -194,7 +204,8 @@ struct FocusTimerEngine {
             phaseDuration: duration,
             endTime: shouldAutoStart ? now.addingTimeInterval(duration) : nil,
             isPaused: false,
-            pausedAt: nil
+            pausedAt: nil,
+            hasStartedTimerFlow: hasStartedTimerFlow
         )
     }
 
