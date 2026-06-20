@@ -144,6 +144,36 @@ final class FocusHistoryManager: ObservableObject {
         }
     }
 
+    func migrateStorage(using userDefaults: UserDefaults) {
+        let sessions = getAllSessions()
+        var needsSave = false
+
+        for session in sessions where normalizeSessionForCurrentSchema(session) {
+            needsSave = true
+        }
+
+        let legacyAvailableTags = FocusTimerStorage.loadLegacyAvailableTags(from: userDefaults)
+        let selectedTagNames = FocusTimerStorage.loadSelectedTagName(from: userDefaults).map { [$0] } ?? []
+        let tagNames = FocusTagCatalog.normalizedTags(
+            from: legacyAvailableTags
+                + sessions.compactMap(\.normalizedTagName)
+                + selectedTagNames
+        )
+
+        let hasLegacyAvailableTags = !legacyAvailableTags.isEmpty
+        if upsertTagsIfNeeded(named: tagNames) {
+            needsSave = true
+        }
+
+        if needsSave {
+            if saveContext("Failed to migrate focus storage"), hasLegacyAvailableTags {
+                FocusTimerStorage.clearLegacyAvailableTags(in: userDefaults)
+            }
+        } else if hasLegacyAvailableTags {
+            FocusTimerStorage.clearLegacyAvailableTags(in: userDefaults)
+        }
+    }
+
     func ensureTagExists(named tagName: String) {
         guard let normalizedTagName = FocusTagCatalog.normalizeTagName(tagName) else {
             return
@@ -233,6 +263,50 @@ final class FocusHistoryManager: ObservableObject {
         }
 
         return FocusTagCatalog.defaultSessionTitle
+    }
+
+    private func normalizeSessionForCurrentSchema(_ session: FocusSession) -> Bool {
+        let normalizedTagName = FocusTagCatalog.normalizeTagName(session.tagName)
+        let migratedNote = migratedNote(for: session, normalizedTagName: normalizedTagName)
+        let normalizedStoredTaskName = storedTaskName(note: migratedNote, tagName: normalizedTagName)
+
+        var changed = false
+
+        if session.tagName != normalizedTagName {
+            session.tagName = normalizedTagName
+            changed = true
+        }
+
+        let expectedNote: String? = migratedNote.isEmpty ? nil : migratedNote
+        if session.note != expectedNote {
+            session.note = expectedNote
+            changed = true
+        }
+
+        if session.taskName != normalizedStoredTaskName {
+            session.taskName = normalizedStoredTaskName
+            changed = true
+        }
+
+        return changed
+    }
+
+    private func migratedNote(for session: FocusSession, normalizedTagName: String?) -> String {
+        let normalizedStoredNote = normalizedNote(session.note)
+        if !normalizedStoredNote.isEmpty {
+            return normalizedStoredNote
+        }
+
+        let legacyTaskName = FocusTagCatalog.sanitize(session.taskName, maxLength: 80)
+        if legacyTaskName.isEmpty || legacyTaskName == FocusTagCatalog.defaultSessionTitle {
+            return ""
+        }
+
+        if let normalizedTagName, legacyTaskName == normalizedTagName {
+            return ""
+        }
+
+        return legacyTaskName
     }
 
     private func upsertTagsIfNeeded(named tagNames: [String]) -> Bool {
